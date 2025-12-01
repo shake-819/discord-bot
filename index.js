@@ -21,6 +21,9 @@ const CHANNEL_ID = "1413505791289458799"; // 通知チャンネルID
 const GUILD_ID = "1345978160738730034"; // サーバー専用コマンド用
 const EVENTS_FILE = path.join(__dirname, "events.json"); // 絶対パス指定
 
+process.on("uncaughtException", console.error);
+process.on("unhandledRejection", console.error);
+
 // JSONファイルがなければ作成
 if (!fs.existsSync(EVENTS_FILE)) fs.writeFileSync(EVENTS_FILE, "[]");
 
