@@ -9,8 +9,9 @@ const {
 const fs = require("fs");
 const path = require("path");
 const schedule = require("node-schedule");
+const http = require("http");
 
-// ====== 環境変数チェック（Railway安定化のため追加） ======
+// ====== 環境変数チェック ======
 const TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID || "1413505791289458799";
 const GUILD_ID = process.env.GUILD_ID || "1345978160738730034";
@@ -25,7 +26,7 @@ if (!GUILD_ID) console.warn("⚠ GUILD_ID が設定されていません。");
 // ====== クライアント ======
 const client = new Client({
     intents: [
-        GatewayIntentBits.Guilds, // SlashCommandに必要
+        GatewayIntentBits.Guilds,
     ],
     partials: [Partials.Channel],
 });
@@ -33,7 +34,7 @@ const client = new Client({
 // イベントファイル
 const EVENTS_FILE = path.join(__dirname, "events.json");
 
-// エラーをログに出す（Railway用）
+// エラーをログに出す
 process.on("uncaughtException", err => console.error("Uncaught Exception:", err));
 process.on("unhandledRejection", err => console.error("Unhandled Rejection:", err));
 
@@ -175,6 +176,16 @@ client.on("interactionCreate", async interaction => {
 
 // Botログイン
 client.login(TOKEN);
+
+// ====== HTTPサーバー追加（スリープ回避用） ======
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("Bot is running ✅");
+}).listen(PORT, () => {
+    console.log(`HTTP server running on port ${PORT}`);
+});
+
 
 
 
