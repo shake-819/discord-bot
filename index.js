@@ -10,23 +10,41 @@ const fs = require("fs");
 const path = require("path");
 const schedule = require("node-schedule");
 
-// ボット設定
+// ====== 環境変数チェック（Railway安定化のため追加） ======
+const TOKEN = process.env.DISCORD_TOKEN;
+const CHANNEL_ID = process.env.CHANNEL_ID || "1413505791289458799";
+const GUILD_ID = process.env.GUILD_ID || "1345978160738730034";
+
+if (!TOKEN) {
+    console.error("❌ ERROR: DISCORD_TOKEN が設定されていません。Railway の Variables を確認してください。");
+    process.exit(1);
+}
+if (!CHANNEL_ID) console.warn("⚠ CHANNEL_ID が設定されていません。");
+if (!GUILD_ID) console.warn("⚠ GUILD_ID が設定されていません。");
+
+// ====== クライアント ======
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+    intents: [
+        GatewayIntentBits.Guilds, // SlashCommandに必要
+    ],
     partials: [Partials.Channel],
 });
 
-const TOKEN = process.env.DISCORD_TOKEN;
-const CHANNEL_ID = process.env.CHANNEL_ID || "1413505791289458799"; // 環境変数推奨
-const GUILD_ID = process.env.GUILD_ID || "1345978160738730034"; // 環境変数推奨
+// イベントファイル
 const EVENTS_FILE = path.join(__dirname, "events.json");
 
-// エラーをログに出す
-process.on("uncaughtException", console.error);
-process.on("unhandledRejection", console.error);
+// エラーをログに出す（Railway用）
+process.on("uncaughtException", err => console.error("Uncaught Exception:", err));
+process.on("unhandledRejection", err => console.error("Unhandled Rejection:", err));
 
 // JSONファイルがなければ作成
-if (!fs.existsSync(EVENTS_FILE)) fs.writeFileSync(EVENTS_FILE, "[]");
+try {
+    if (!fs.existsSync(EVENTS_FILE)) {
+        fs.writeFileSync(EVENTS_FILE, "[]");
+    }
+} catch (err) {
+    console.error("❌ events.json 作成に失敗:", err);
+}
 
 // JSON読み書き関数
 function readEvents() {
@@ -74,18 +92,18 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 // Bot起動時
 client.once("ready", async () => {
-    console.log(`${client.user.tag} is ready!`);
+    console.log(`${client.user.tag} is ready and running on Railway!`);
 
-    // サーバー専用コマンド登録
+    // コマンド登録
     try {
-        console.log("Refreshing slash commands for guild...");
+        console.log("Refreshing slash commands...");
         await rest.put(
             Routes.applicationGuildCommands(client.user.id, GUILD_ID),
             { body: commands }
         );
-        console.log("Guild slash commands registered!");
+        console.log("Slash commands registered!");
     } catch (error) {
-        console.error(error);
+        console.error("❌ Slash command registration failed:", error);
     }
 
     // 毎日0時に通知
@@ -93,19 +111,17 @@ client.once("ready", async () => {
         const today = new Date();
         const events = readEvents();
 
-        events.forEach((event) => {
+        events.forEach(event => {
             const eventDate = new Date(event.date);
             const diffDays = Math.ceil(
                 (eventDate - today) / (1000 * 60 * 60 * 24)
             );
 
-            if (diffDays === 7 || diffDays === 3 || diffDays === 0) {
+            if ([7, 3, 0].includes(diffDays)) {
                 const label =
-                    diffDays === 0
-                        ? "本日"
-                        : diffDays === 3
-                        ? "3日前"
-                        : "7日前";
+                    diffDays === 0 ? "本日" :
+                    diffDays === 3 ? "3日前" : "7日前";
+
                 const channel = client.channels.cache.get(CHANNEL_ID);
                 if (channel) {
                     channel.send(`@everyone ${event.message} (${label})`);
@@ -116,7 +132,7 @@ client.once("ready", async () => {
 });
 
 // コマンド処理
-client.on("interactionCreate", async (interaction) => {
+client.on("interactionCreate", async interaction => {
     if (!interaction.isCommand()) return;
 
     const events = readEvents();
@@ -128,26 +144,29 @@ client.on("interactionCreate", async (interaction) => {
         events.push({ date, message });
         writeEvents(events);
 
-        console.log("Added event:", { date, message });
-
         await interaction.reply(`イベント追加 ✅\n${date} : ${message}`);
     }
 
     if (interaction.commandName === "listevents") {
         if (events.length === 0)
             return interaction.reply("登録されているイベントはありません。");
+
         const list = events
             .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
             .join("\n");
+
         await interaction.reply(`📅 登録イベント一覧:\n${list}`);
     }
 
     if (interaction.commandName === "deleteevent") {
         const index = interaction.options.getInteger("index") - 1;
+
         if (index < 0 || index >= events.length)
             return interaction.reply("無効な番号です。");
+
         const removed = events.splice(index, 1);
         writeEvents(events);
+
         await interaction.reply(
             `削除しました ✅\n${removed[0].date} - ${removed[0].message}`
         );
@@ -156,5 +175,6 @@ client.on("interactionCreate", async (interaction) => {
 
 // Botログイン
 client.login(TOKEN);
+
 
 
