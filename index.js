@@ -92,7 +92,7 @@ const fs = require("fs");
     const rest = new REST({ version: "10" }).setToken(TOKEN);
 
     // Bot起動時
-    client.once("ready", async () => {
+    client.once("clientReady", async () => {
         console.log(`${client.user.tag} is ready and running on Railway!`);
 
         // コマンド登録
