@@ -107,30 +107,38 @@ client.once("ready", async () => {
         console.error("❌ Slash command registration failed:", error);
     }
 
-    // 毎日0時に通知
-    schedule.scheduleJob("0 0 * * *", () => {
-        const today = new Date();
-        const events = readEvents();
+   // 毎日0時に通知（JST 基準）
+schedule.scheduleJob("0 0 * * *", () => {
+    // 現在時刻を JST に変換
+    const now = new Date();
+    const jst = new Date(now.getTime() + (9 * 60 * 60 * 1000));
 
-        events.forEach(event => {
-            const eventDate = new Date(event.date);
-            const diffDays = Math.ceil(
-                (eventDate - today) / (1000 * 60 * 60 * 24)
-            );
+    // JST の「日付部分（2025-12-04 00:00:00 のような形）」を作成
+    const todayJST = new Date(jst.getFullYear(), jst.getMonth(), jst.getDate());
 
-            if ([7, 3, 0].includes(diffDays)) {
-                const label =
-                    diffDays === 0 ? "本日" :
-                    diffDays === 3 ? "3日前" : "7日前";
+    const events = readEvents();
 
-                const channel = client.channels.cache.get(CHANNEL_ID);
-                if (channel) {
-                    channel.send(`@everyone ${event.message} (${label})`);
-                }
+    events.forEach((event) => {
+        const eventDate = new Date(event.date);
+
+        // JST での日数差を計算
+        const diffDays = Math.ceil(
+            (eventDate - todayJST) / (1000 * 60 * 60 * 24)
+        );
+
+        if (diffDays === 7 || diffDays === 3 || diffDays === 0) {
+            const label =
+                diffDays === 0 ? "本日" :
+                diffDays === 3 ? "3日前" : "7日前";
+
+            const channel = client.channels.cache.get(CHANNEL_ID);
+            if (channel) {
+                channel.send(`@everyone ${event.message} (${label})`);
             }
-        });
+        }
     });
 });
+
 
 // コマンド処理
 client.on("interactionCreate", async interaction => {
