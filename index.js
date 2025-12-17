@@ -135,7 +135,7 @@ const fs = require("fs");
 
                     const channel = client.channels.cache.get(CHANNEL_ID);
                     if (channel) {
-                        channel.send(`@everyone ${event.message} (${label})`);
+                        channel.send(`${event.message} (${label})`);
                     }
                 }
             });
