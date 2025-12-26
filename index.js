@@ -57,15 +57,19 @@ const fs = require("fs");
         }
     }
 
-    function writeEvents(events) {
-        try {
-            fs.writeFileSync(EVENTS_FILE, JSON.stringify(events, null, 2));
-            console.log("events.json updated!");
-        } catch (err) {
-            console.error("Failed to write events.json:", err);
-        }
-    }
+   function writeEvents(events) {
+    try {
+        // 日付で昇順ソート（YYYY-MM-DD 前提）
+        events.sort((a, b) => {
+            return new Date(a.date) - new Date(b.date);
+        });
 
+        fs.writeFileSync(EVENTS_FILE, JSON.stringify(events, null, 2));
+        console.log("events.json updated (sorted by date)!");
+    } catch (err) {
+        console.error("Failed to write events.json:", err);
+    }
+}
     // コマンド定義
     const commands = [
         new SlashCommandBuilder()
