@@ -112,39 +112,55 @@ const fs = require("fs");
         }
 
         // ====== 毎日 0 時（JST）に通知 ======
-        // UTC 15:00 → JST 00:00
-        schedule.scheduleJob("0 15 * * *", () => {
+// UTC 15:00 → JST 00:00
+schedule.scheduleJob("0 15 * * *", () => {
 
-            // 現在の UTC → JST に変換
-            const now = new Date();
-            const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    // 現在の UTC → JST に変換
+    const now = new Date();
+    const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
 
-            // JST の日付基準（同日 00:00）
-            const todayJST = new Date(jstNow.getFullYear(), jstNow.getMonth(), jstNow.getDate());
+    // JST の日付基準（同日 00:00）
+    const todayJST = new Date(
+        jstNow.getFullYear(),
+        jstNow.getMonth(),
+        jstNow.getDate()
+    );
 
-            const events = readEvents();
+    const events = readEvents();
 
-            events.forEach((event) => {
-                const eventDate = new Date(event.date);
-
-                // JST 基準で日数差計算
-                const diffDays = Math.ceil(
-                    (eventDate - todayJST) / (1000 * 60 * 60 * 24)
-                );
-
-                if (diffDays === 7 || diffDays === 3 || diffDays === 0) {
-                    const label =
-                        diffDays === 0 ? "本日" :
-                        diffDays === 3 ? "3日前" : "7日前";
-
-                    const channel = client.channels.cache.get(CHANNEL_ID);
-                    if (channel) {
-                        channel.send(`${event.message} (${label})`);
-                    }
-                }
-            });
-        });
+    // ====== 過ぎたイベントを自動削除（JST基準） ======
+    const filteredEvents = events.filter(event => {
+        const eventDate = new Date(event.date);
+        return eventDate >= todayJST; // 今日より前は削除
     });
+
+    // 削除が発生したら保存
+    if (filteredEvents.length !== events.length) {
+        writeEvents(filteredEvents);
+    }
+
+    // ====== 通知処理 ======
+    filteredEvents.forEach((event) => {
+        const eventDate = new Date(event.date);
+
+        // JST 基準で日数差計算
+        const diffDays = Math.ceil(
+            (eventDate - todayJST) / (1000 * 60 * 60 * 24)
+        );
+
+        if (diffDays === 7 || diffDays === 3 || diffDays === 0) {
+            const label =
+                diffDays === 0 ? "本日" :
+                diffDays === 3 ? "3日前" : "7日前";
+
+            const channel = client.channels.cache.get(CHANNEL_ID);
+            if (channel) {
+                channel.send(`${event.message} (${label})`);
+            }
+        }
+    });
+});
+
 
     // コマンド処理
     client.on("interactionCreate", async interaction => {
