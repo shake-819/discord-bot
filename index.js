@@ -97,7 +97,7 @@ const commands = [
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 // Bot起動時
-client.once("clientReady", async () => {
+client.once("Ready", async () => {
     console.log(`${client.user.tag} is ready and running on Railway!`);
 
     // コマンド登録
