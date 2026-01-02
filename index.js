@@ -100,18 +100,7 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 client.once("ready", async () => {
     console.log(`✅ READY fired as ${client.user.tag}`);
 
-    try {
-        console.log("Refreshing slash commands...");
-        await rest.put(
-            Routes.applicationGuildCommands(client.user.id, GUILD_ID),
-            { body: commands }
-        );
-        console.log("Slash commands registered!");
-    } catch (error) {
-        console.error("❌ Slash command registration failed:", error);
-    }
-});
-
+    schedule.scheduleJob("0 15 * * *", () => {
     // コマンド登録
     try {
         console.log("Refreshing slash commands...");
@@ -126,7 +115,7 @@ client.once("ready", async () => {
 
     // ====== 毎日 0 時（JST）に通知 ======
     // UTC 15:00 → JST 00:00
-    schedule.scheduleJob("0 15 * * *", () => {
+    
 
         // 現在の UTC → JST に変換
         const now = new Date();
@@ -229,8 +218,7 @@ client.login(TOKEN)
   });
 
 
-// Botログイン
-client.login(TOKEN);
+//
 
 // ====== HTTPサーバー追加（スリープ回避用） ======
 const PORT = process.env.PORT || 3000;
