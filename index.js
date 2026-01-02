@@ -203,6 +203,12 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
+console.log("TOKEN length:", TOKEN.length);
+
+client.login(TOKEN)
+  .then(() => console.log("login() resolved"))
+  .catch(err => console.error("login() failed:", err));
+
 // Botログイン
 client.login(TOKEN);
 
