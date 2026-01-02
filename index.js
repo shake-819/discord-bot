@@ -96,12 +96,10 @@ const commands = [
 // REST準備
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-// Bot起動時
 client.once("ready", async () => {
     console.log(`✅ READY fired as ${client.user.tag}`);
 
-    schedule.scheduleJob("0 15 * * *", () => {
-    // コマンド登録
+    // ← ここで1回だけ登録
     try {
         console.log("Refreshing slash commands...");
         await rest.put(
@@ -113,54 +111,46 @@ client.once("ready", async () => {
         console.error("❌ Slash command registration failed:", error);
     }
 
-    // ====== 毎日 0 時（JST）に通知 ======
-    // UTC 15:00 → JST 00:00
-    
+  schedule.scheduleJob("0 15 * * *", () => {
+    const now = new Date();
+    const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
 
-        // 現在の UTC → JST に変換
-        const now = new Date();
-        const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const todayJST = new Date(
+        jstNow.getFullYear(),
+        jstNow.getMonth(),
+        jstNow.getDate()
+    );
 
-        // JST の日付基準（同日 00:00）
-        const todayJST = new Date(
-            jstNow.getFullYear(),
-            jstNow.getMonth(),
-            jstNow.getDate()
+    const events = readEvents();
+
+    const filteredEvents = events.filter(event => {
+        const eventDate = new Date(event.date);
+        return eventDate >= todayJST;
+    });
+
+    if (filteredEvents.length !== events.length) {
+        writeEvents(filteredEvents);
+    }
+
+    filteredEvents.forEach(event => {
+        const eventDate = new Date(event.date);
+        const diffDays = Math.ceil(
+            (eventDate - todayJST) / (1000 * 60 * 60 * 24)
         );
 
-        const events = readEvents();
+        if (diffDays === 7 || diffDays === 3 || diffDays === 0) {
+            const label =
+                diffDays === 0 ? "本日" :
+                diffDays === 3 ? "3日前" : "7日前";
 
-        // ====== ★ここだけ追加（過去日付イベント削除） ======
-        const filteredEvents = events.filter(event => {
-            const eventDate = new Date(event.date);
-            return eventDate >= todayJST;
-        });
-
-        if (filteredEvents.length !== events.length) {
-            writeEvents(filteredEvents);
-        }
-        // ====== ★追加ここまで ======
-
-        filteredEvents.forEach((event) => {
-            const eventDate = new Date(event.date);
-
-            const diffDays = Math.ceil(
-                (eventDate - todayJST) / (1000 * 60 * 60 * 24)
-            );
-
-            if (diffDays === 7 || diffDays === 3 || diffDays === 0) {
-                const label =
-                    diffDays === 0 ? "本日" :
-                    diffDays === 3 ? "3日前" : "7日前";
-
-                const channel = client.channels.cache.get(CHANNEL_ID);
-                if (channel) {
-                    channel.send(`${event.message} (${label})`);
-                }
+            const channel = client.channels.cache.get(CHANNEL_ID);
+            if (channel) {
+                channel.send(`${event.message} (${label})`);
             }
-        });
+        }
     });
 });
+
 
 // コマンド処理
 client.on("interactionCreate", async interaction => {
