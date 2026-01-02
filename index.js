@@ -99,7 +99,7 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 client.once("ready", async () => {
     console.log(`✅ READY fired as ${client.user.tag}`);
 
-    // ← ここで1回だけ登録
+    // スラッシュコマンド登録（起動時1回）
     try {
         console.log("Refreshing slash commands...");
         await rest.put(
@@ -111,46 +111,47 @@ client.once("ready", async () => {
         console.error("❌ Slash command registration failed:", error);
     }
 
-  schedule.scheduleJob("0 15 * * *", () => {
-    const now = new Date();
-    const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    // 毎日 JST 0:00（UTC 15:00）
+    schedule.scheduleJob("0 15 * * *", () => {
+        const now = new Date();
+        const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
 
-    const todayJST = new Date(
-        jstNow.getFullYear(),
-        jstNow.getMonth(),
-        jstNow.getDate()
-    );
-
-    const events = readEvents();
-
-    const filteredEvents = events.filter(event => {
-        const eventDate = new Date(event.date);
-        return eventDate >= todayJST;
-    });
-
-    if (filteredEvents.length !== events.length) {
-        writeEvents(filteredEvents);
-    }
-
-    filteredEvents.forEach(event => {
-        const eventDate = new Date(event.date);
-        const diffDays = Math.ceil(
-            (eventDate - todayJST) / (1000 * 60 * 60 * 24)
+        const todayJST = new Date(
+            jstNow.getFullYear(),
+            jstNow.getMonth(),
+            jstNow.getDate()
         );
 
-        if (diffDays === 7 || diffDays === 3 || diffDays === 0) {
-            const label =
-                diffDays === 0 ? "本日" :
-                diffDays === 3 ? "3日前" : "7日前";
+        const events = readEvents();
 
-            const channel = client.channels.cache.get(CHANNEL_ID);
-            if (channel) {
-                channel.send(`${event.message} (${label})`);
-            }
+        const filteredEvents = events.filter(event => {
+            const eventDate = new Date(event.date);
+            return eventDate >= todayJST;
+        });
+
+        if (filteredEvents.length !== events.length) {
+            writeEvents(filteredEvents);
         }
-    });
-});
 
+        filteredEvents.forEach(event => {
+            const eventDate = new Date(event.date);
+            const diffDays = Math.ceil(
+                (eventDate - todayJST) / (1000 * 60 * 60 * 24)
+            );
+
+            if (diffDays === 7 || diffDays === 3 || diffDays === 0) {
+                const label =
+                    diffDays === 0 ? "本日" :
+                    diffDays === 3 ? "3日前" : "7日前";
+
+                const channel = client.channels.cache.get(CHANNEL_ID);
+                if (channel) {
+                    channel.send(`${event.message} (${label})`);
+                }
+            }
+        });
+    });
+}); // ← ★これが無いとエラーになる（重要）
 
 // コマンド処理
 client.on("interactionCreate", async interaction => {
@@ -195,20 +196,16 @@ client.on("interactionCreate", async interaction => {
 });
 
 console.log("TOKEN length:", TOKEN.length);
-
 console.log("Attempting Discord login...");
 
 client.login(TOKEN)
-  .then(() => {
-    console.log("✅ login() resolved");
-  })
-  .catch(err => {
-    console.error("❌ login() failed:", err);
-    process.exit(1);
-  });
-
-
-//
+    .then(() => {
+        console.log("✅ login() resolved");
+    })
+    .catch(err => {
+        console.error("❌ login() failed:", err);
+        process.exit(1);
+    });
 
 // ====== HTTPサーバー追加（スリープ回避用） ======
 const PORT = process.env.PORT || 3000;
@@ -218,5 +215,3 @@ http.createServer((req, res) => {
 }).listen(PORT, () => {
     console.log(`HTTP server running on port ${PORT}`);
 });
-
-
