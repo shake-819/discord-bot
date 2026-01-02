@@ -97,8 +97,10 @@ const commands = [
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 // Bot起動時
-client.once("Ready", async () => {
-    console.log(`${client.user.tag} is ready and running on Railway!`);
+client.once("ready", () => {
+  console.log(`✅ READY fired as ${client.user.tag}`);
+});
+
 
     // コマンド登録
     try {
@@ -205,9 +207,17 @@ client.on("interactionCreate", async interaction => {
 
 console.log("TOKEN length:", TOKEN.length);
 
+console.log("Attempting Discord login...");
+
 client.login(TOKEN)
-  .then(() => console.log("login() resolved"))
-  .catch(err => console.error("login() failed:", err));
+  .then(() => {
+    console.log("✅ login() resolved");
+  })
+  .catch(err => {
+    console.error("❌ login() failed:", err);
+    process.exit(1);
+  });
+
 
 // Botログイン
 client.login(TOKEN);
