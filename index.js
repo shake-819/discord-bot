@@ -97,10 +97,20 @@ const commands = [
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 // Bot起動時
-client.once("ready", () => {
-  console.log(`✅ READY fired as ${client.user.tag}`);
-});
+client.once("ready", async () => {
+    console.log(`✅ READY fired as ${client.user.tag}`);
 
+    try {
+        console.log("Refreshing slash commands...");
+        await rest.put(
+            Routes.applicationGuildCommands(client.user.id, GUILD_ID),
+            { body: commands }
+        );
+        console.log("Slash commands registered!");
+    } catch (error) {
+        console.error("❌ Slash command registration failed:", error);
+    }
+});
 
     // コマンド登録
     try {
