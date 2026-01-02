@@ -155,7 +155,7 @@ client.once("ready", async () => {
 
 // コマンド処理
 client.on("interactionCreate", async interaction => {
-    if (!interaction.isCommand()) return;
+    if (!interaction.isChatInputCommand()) return;
 
     const events = readEvents();
 
@@ -194,6 +194,7 @@ client.on("interactionCreate", async interaction => {
         );
     }
 });
+
 
 console.log("TOKEN length:", TOKEN.length);
 console.log("Attempting Discord login...");
