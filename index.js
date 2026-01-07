@@ -195,43 +195,39 @@ client.on("interactionCreate", async interaction => {
         }
 
         if (interaction.commandName === "listevents") {
-            const events = await readEventsLocked();
+    const events = await updateEvents(events => events);
 
-            if (events.length === 0) {
-                return interaction.reply("イベントなし");
-            }
+    if (!events || events.length === 0) {
+        return interaction.reply("イベントなし");
+    }
 
-            return interaction.reply(
-                events
-                    .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
-                    .join("\n")
-            );
-        }
+    return interaction.reply(
+        events
+            .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
+            .join("\n")
+    );
+}
+
 
         if (interaction.commandName === "deleteevent") {
-            await interaction.deferReply();
+    await interaction.deferReply();
 
-            const index = interaction.options.getInteger("index") - 1;
+    const index = interaction.options.getInteger("index") - 1;
 
-            const removed = await updateEvents(events => {
-                if (index < 0 || index >= events.length) return null;
-                return events.splice(index, 1)[0];
-            });
+    const removed = await updateEvents(events => {
+        if (index < 0 || index >= events.length) return null;
+        return events.splice(index, 1)[0];
+    });
 
-            if (!removed) {
-                return interaction.editReply("無効な番号");
-            }
-
-            return interaction.editReply(
-                `削除しました ✅\n${removed.date} - ${removed.message}`
-            );
-        }
-    } catch (err) {
-        console.error("❌ interaction error:", err);
-        if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply("⚠ 内部エラーが発生しました");
-        }
+    if (!removed) {
+        return interaction.editReply("無効な番号");
     }
+
+    return interaction.editReply(
+        `削除しました ✅\n${removed.date} - ${removed.message}`
+    );
+}
+
 });
 
 // ====== 起動 ======
