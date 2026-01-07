@@ -53,6 +53,19 @@ async function readEvents() {
 async function writeEvents(events) {
     const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
     const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
+    async function writeEvents(events) {
+    try {
+        const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
+        const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
+
+        await message.edit(
+            "```json\n" + JSON.stringify(events, null, 2) + "\n```"
+        );
+    } catch (err) {
+        console.error("❌ writeEvents failed:", err);
+    }
+}
+
 
     events.sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -127,6 +140,8 @@ client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     if (interaction.commandName === "addevent") {
+        await interaction.deferReply();
+
         const date = interaction.options.getString("date");
         const message = interaction.options.getString("message");
 
@@ -150,6 +165,8 @@ client.on("interactionCreate", async interaction => {
     }
 
     if (interaction.commandName === "deleteevent") {
+        await interaction.deferReply();
+
         const index = interaction.options.getInteger("index") - 1;
         const events = await readEvents();
 
