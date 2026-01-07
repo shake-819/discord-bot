@@ -168,6 +168,7 @@ client.once("ready", async () => {
 
 
 // ====== interaction（二重防止・完全版） ======
+// ====== interaction（二重防止・Unknown interaction 対策済み） ======
 const handledInteractions = new Set();
 
 client.on("interactionCreate", async interaction => {
@@ -178,11 +179,16 @@ client.on("interactionCreate", async interaction => {
     handledInteractions.add(interaction.id);
     setTimeout(() => handledInteractions.delete(interaction.id), 60_000);
 
+    // ★ ここで必ず defer（3秒ルール対策）
+    try {
+        await interaction.deferReply();
+    } catch {
+        return; // すでに失効している interaction
+    }
+
     try {
         // ====== add ======
         if (interaction.commandName === "addevent") {
-            await interaction.deferReply();
-
             const date = interaction.options.getString("date");
             const message = interaction.options.getString("message");
 
@@ -204,10 +210,10 @@ client.on("interactionCreate", async interaction => {
             const events = await updateEvents(events => events);
 
             if (!events || events.length === 0) {
-                return interaction.reply("イベントなし");
+                return interaction.editReply("イベントなし");
             }
 
-            return interaction.reply(
+            return interaction.editReply(
                 events
                     .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
                     .join("\n")
@@ -216,8 +222,6 @@ client.on("interactionCreate", async interaction => {
 
         // ====== delete（index 削除） ======
         if (interaction.commandName === "deleteevent") {
-            await interaction.deferReply();
-
             const index = interaction.options.getInteger("index") - 1;
 
             const removed = await updateEvents(events => {
@@ -233,13 +237,19 @@ client.on("interactionCreate", async interaction => {
                 `削除しました ✅\n${removed.date} - ${removed.message}`
             );
         }
+
+        // 万一コマンド不明
+        return interaction.editReply("不明なコマンドです");
     } catch (err) {
         console.error("❌ interaction error:", err);
-        if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply("⚠ 内部エラーが発生しました");
+        try {
+            return interaction.editReply("⚠ 内部エラーが発生しました");
+        } catch {
+            // interaction 完全失効時は何もしない
         }
     }
 });
+
 
 
 // ====== 起動 ======
