@@ -66,7 +66,7 @@ async function updateEvents(mutator) {
 
         const events = JSON.parse(content || "[]");
 
-        await mutator(events);
+        await mutator(events); // ★ mutate はここで一括
 
         events.sort((a, b) => parseJSTDate(a.date) - parseJSTDate(b.date));
 
@@ -123,16 +123,22 @@ client.once("ready", async () => {
         { body: commands }
     );
 
-    // ====== 毎日 JST 0:00 過去イベント削除 ======
+    // ====== 毎日 JST 0:00 過去イベント削除（安全化） ======
     schedule.scheduleJob({ hour: 0, minute: 0, tz: "Asia/Tokyo" }, async () => {
         try {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
             await updateEvents(events => {
-                const filtered = events.filter(e => parseJSTDate(e.date) >= today);
+                // 過去イベントだけを安全に削除
+                for (let i = events.length - 1; i >= 0; i--) {
+                    if (parseJSTDate(events[i].date) < today) {
+                        events.splice(i, 1);
+                    }
+                }
 
-                for (const e of filtered) {
+                // 7日・3日・0日前通知
+                for (const e of events) {
                     const diff = Math.ceil((parseJSTDate(e.date) - today) / 86400000);
                     if ([7, 3, 0].includes(diff)) {
                         const label = diff === 0 ? "本日" : diff === 3 ? "3日前" : "7日前";
@@ -140,9 +146,6 @@ client.once("ready", async () => {
                         if (ch) ch.send(`${e.message} (${label})`);
                     }
                 }
-
-                events.length = 0;
-                events.push(...filtered);
             });
         } catch (err) {
             console.error("❌ 定期処理失敗:", err);
@@ -150,7 +153,7 @@ client.once("ready", async () => {
     });
 });
 
-// ====== interaction（二重防止・完全版） ======
+// ====== interaction（二重防止 + atomic + 重複防止） ======
 const handledInteractions = new Set();
 
 client.on("interactionCreate", async interaction => {
@@ -168,7 +171,10 @@ client.on("interactionCreate", async interaction => {
             const message = interaction.options.getString("message");
 
             await updateEvents(events => {
-                events.push({ id: crypto.randomUUID(), date, message });
+                // 同じ日付・内容の重複追加を防止
+                if (!events.some(e => e.date === date && e.message === message)) {
+                    events.push({ id: crypto.randomUUID(), date, message });
+                }
             });
 
             return interaction.editReply(`追加しました ✅\n${date} - ${message}`);
@@ -185,8 +191,7 @@ client.on("interactionCreate", async interaction => {
             const index = interaction.options.getInteger("index") - 1;
             let removed;
             await updateEvents(events => {
-                if (index < 0 || index >= events.length) return;
-                removed = events.splice(index, 1)[0];
+                if (index >= 0 && index < events.length) removed = events.splice(index, 1)[0];
             });
 
             if (!removed) return interaction.editReply("無効な番号");
@@ -206,3 +211,4 @@ client.login(TOKEN);
 // ====== HTTP ======
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => { res.end("Bot running"); }).listen(PORT);
+
