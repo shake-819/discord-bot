@@ -183,18 +183,12 @@ client.on("interactionCreate", async interaction => {
                 }
             });
 
-            // ★ edit 後に最新 fetch して確実に反映
-            const latestEvents = await readEventsLocked();
-
-            return interaction.editReply(
-                `追加しました ✅\n${date} - ${messageText}\n\n` +
-                `現在のイベント一覧:\n` +
-                latestEvents.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
-            );
+            return interaction.editReply(`追加しました ✅\n${date} - ${messageText}`);
         }
 
         // ====== list events ======
         if (interaction.commandName === "listevents") {
+            // ★ 常に最新の Discord メッセージから取得
             const events = await readEventsLocked();
             if (!events || events.length === 0) return interaction.editReply("イベントなし");
 
