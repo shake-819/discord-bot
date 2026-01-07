@@ -32,23 +32,33 @@ async function readEvents() {
     const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
     const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
 
+    const content = message.content
+        .replace(/^```json\s*/i, "")
+        .replace(/\s*```$/, "")
+        .trim();
+
     try {
-        return JSON.parse(message.content.replace(/```json|```/g, ""));
-    } catch {
+        const parsed = JSON.parse(content);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+        console.error("❌ JSON parse failed:", err);
         return [];
     }
 }
 
 async function writeEvents(events) {
-    events.sort((a, b) => new Date(a.date) - new Date(b.date));
-
     const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
     const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
 
+    events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
     await message.edit(
-        "```json\n" + JSON.stringify(events, null, 2) + "\n```"
+        "```json\n" +
+        JSON.stringify(events, null, 2) +
+        "\n```"
     );
 }
+
 
 // ====== コマンド定義 ======
 const commands = [
