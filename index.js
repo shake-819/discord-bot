@@ -46,6 +46,7 @@ async function readEvents() {
     }
 }
 
+
 async function writeEvents(events) {
     const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
     const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
@@ -119,41 +120,66 @@ client.once("ready", async () => {
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === "addevent") {
-        const date = interaction.options.getString("date");
-        const message = interaction.options.getString("message");
+    try {
+        // ====== addevent ======
+        if (interaction.commandName === "addevent") {
+            await interaction.deferReply();
 
-        const events = await readEvents();
-        events.push({ date, message });
-        await writeEvents(events);
+            const date = interaction.options.getString("date");
+            const message = interaction.options.getString("message");
 
-        return interaction.reply(`追加しました ✅\n${date} : ${message}`);
-    }
+            const events = await readEvents();
+            events.push({ date, message });
 
-    if (interaction.commandName === "listevents") {
-        const events = await readEvents();
-        if (!events.length) return interaction.reply("イベントなし");
+            await writeEvents(events);
 
-        return interaction.reply(
-            events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
-        );
-    }
+            return interaction.editReply(
+                `追加しました ✅\n${date} : ${message}`
+            );
+        }
 
-    if (interaction.commandName === "deleteevent") {
-        const index = interaction.options.getInteger("index") - 1;
-        const events = await readEvents();
+        // ====== listevents ======
+        if (interaction.commandName === "listevents") {
+            const events = await readEvents();
 
-        if (index < 0 || index >= events.length)
-            return interaction.reply("無効な番号");
+            if (!Array.isArray(events) || events.length === 0) {
+                return interaction.reply("イベントなし");
+            }
 
-        const removed = events.splice(index, 1);
-        await writeEvents(events);
+            const text = events
+                .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
+                .join("\n");
 
-        return interaction.reply(
-            `削除しました ✅\n${removed[0].date} - ${removed[0].message}`
-        );
+            return interaction.reply(text);
+        }
+
+        // ====== deleteevent ======
+        if (interaction.commandName === "deleteevent") {
+            await interaction.deferReply();
+
+            const index = interaction.options.getInteger("index") - 1;
+            const events = await readEvents();
+
+            if (index < 0 || index >= events.length) {
+                return interaction.editReply("無効な番号");
+            }
+
+            const removed = events.splice(index, 1);
+            await writeEvents(events);
+
+            return interaction.editReply(
+                `削除しました ✅\n${removed[0].date} - ${removed[0].message}`
+            );
+        }
+    } catch (err) {
+        console.error("❌ interaction error:", err);
+
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply("内部エラーが発生しました");
+        }
     }
 });
+
 
 // ====== 起動 ======
 client.login(TOKEN);
