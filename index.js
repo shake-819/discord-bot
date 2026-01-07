@@ -166,8 +166,6 @@ client.once("ready", async () => {
     );
 });
 
-// ====== interaction（二重防止） ======
-const handledInteractions = new Set();
 
 // ====== interaction（二重防止・完全版） ======
 const handledInteractions = new Set();
