@@ -6,78 +6,68 @@ const {
     Routes,
     SlashCommandBuilder,
 } = require("discord.js");
-const fs = require("fs");
-const path = require("path");
 const schedule = require("node-schedule");
 const http = require("http");
 
-
-// ====== 環境変数チェック ======
+// ====== 環境変数 ======
 const TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID || "1413505791289458799";
 const GUILD_ID = process.env.GUILD_ID || "1345978160738730034";
 
+const STORAGE_CHANNEL_ID = process.env.STORAGE_CHANNEL_ID;
+const STORAGE_MESSAGE_ID = process.env.STORAGE_MESSAGE_ID;
+
 if (!TOKEN) {
-    console.error("❌ ERROR: DISCORD_TOKEN が設定されていません。Railway の Variables を確認してください。");
+    console.error("❌ DISCORD_TOKEN が未設定");
     process.exit(1);
 }
-if (!CHANNEL_ID) console.warn("⚠ CHANNEL_ID が設定されていません。");
-if (!GUILD_ID) console.warn("⚠ GUILD_ID が設定されていません。");
+if (!STORAGE_CHANNEL_ID || !STORAGE_MESSAGE_ID) {
+    console.error("❌ STORAGE_CHANNEL_ID / STORAGE_MESSAGE_ID が未設定");
+    process.exit(1);
+}
 
 // ====== クライアント ======
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-    ],
+    intents: [GatewayIntentBits.Guilds],
     partials: [Partials.Channel],
 });
 
-// イベントファイル
-const EVENTS_FILE = path.join(__dirname, "events.json");
+// ====== エラー監視 ======
+process.on("uncaughtException", err => console.error(err));
+process.on("unhandledRejection", err => console.error(err));
 
-// エラーをログに出す
-process.on("uncaughtException", err => console.error("Uncaught Exception:", err));
-process.on("unhandledRejection", err => console.error("Unhandled Rejection:", err));
+// ====== Discord JSON ストレージ ======
+async function readEvents() {
+    const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
+    const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
 
-// JSONファイルがなければ作成
-try {
-    if (!fs.existsSync(EVENTS_FILE)) {
-        fs.writeFileSync(EVENTS_FILE, "[]");
-    }
-} catch (err) {
-    console.error("❌ events.json 作成に失敗:", err);
-}
-
-// JSON読み書き関数
-function readEvents() {
     try {
-        return JSON.parse(fs.readFileSync(EVENTS_FILE, "utf-8"));
-    } catch (err) {
-        console.error("Failed to read events.json:", err);
+        return JSON.parse(
+            message.content.replace(/```json|```/g, "")
+        );
+    } catch {
         return [];
     }
 }
 
-function writeEvents(events) {
-    try {
-        events.sort((a, b) => {
-            return new Date(a.date) - new Date(b.date);
-        });
+async function writeEvents(events) {
+    const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
+    const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
 
-        fs.writeFileSync(EVENTS_FILE, JSON.stringify(events, null, 2));
-        console.log("events.json updated (sorted by date)!");
-    } catch (err) {
-        console.error("Failed to write events.json:", err);
-    }
+    events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    await message.edit(
+        "```json\n" + JSON.stringify(events, null, 2) + "\n```"
+    );
 }
 
-// コマンド定義
+// ====== コマンド定義 ======
 const commands = [
     new SlashCommandBuilder()
         .setName("addevent")
         .setDescription("日付とメッセージを追加")
         .addStringOption(opt =>
-            opt.setName("date").setDescription("YYYY-MM-DD形式").setRequired(true)
+            opt.setName("date").setDescription("YYYY-MM-DD").setRequired(true)
         )
         .addStringOption(opt =>
             opt.setName("message").setDescription("通知内容").setRequired(true)
@@ -89,130 +79,97 @@ const commands = [
         .setName("deleteevent")
         .setDescription("イベントを削除")
         .addIntegerOption(opt =>
-            opt.setName("index").setDescription("削除するイベント番号").setRequired(true)
+            opt.setName("index").setDescription("削除番号").setRequired(true)
         ),
-].map(command => command.toJSON());
+].map(c => c.toJSON());
 
-// REST準備
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
+// ====== READY ======
 client.once("ready", async () => {
-    console.log(`✅ READY fired as ${client.user.tag}`);
+    console.log(`✅ Logged in as ${client.user.tag}`);
 
-    // スラッシュコマンド登録（起動時1回）
-    try {
-        console.log("Refreshing slash commands...");
-        await rest.put(
-            Routes.applicationGuildCommands(client.user.id, GUILD_ID),
-            { body: commands }
-        );
-        console.log("Slash commands registered!");
-    } catch (error) {
-        console.error("❌ Slash command registration failed:", error);
-    }
+    await rest.put(
+        Routes.applicationGuildCommands(client.user.id, GUILD_ID),
+        { body: commands }
+    );
 
-    // 毎日 JST 0:00（UTC 15:00）
-    schedule.scheduleJob("0 15 * * *", () => {
+    // 毎日 JST 0:00
+    schedule.scheduleJob("0 15 * * *", async () => {
         const now = new Date();
-        const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+        const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+        const today = new Date(jst.getFullYear(), jst.getMonth(), jst.getDate());
 
-        const todayJST = new Date(
-            jstNow.getFullYear(),
-            jstNow.getMonth(),
-            jstNow.getDate()
-        );
+        const events = await readEvents();
 
-        const events = readEvents();
+        const filtered = events.filter(e => new Date(e.date) >= today);
+        await writeEvents(filtered);
 
-        const filteredEvents = events.filter(event => {
-            const eventDate = new Date(event.date);
-            return eventDate >= todayJST;
-        });
-
-        if (filteredEvents.length !== events.length) {
-            writeEvents(filteredEvents);
-        }
-
-        filteredEvents.forEach(event => {
-            const eventDate = new Date(event.date);
-            const diffDays = Math.ceil(
-                (eventDate - todayJST) / (1000 * 60 * 60 * 24)
+        for (const e of filtered) {
+            const diff = Math.ceil(
+                (new Date(e.date) - today) / 86400000
             );
 
-            if (diffDays === 7 || diffDays === 3 || diffDays === 0) {
+            if ([7, 3, 0].includes(diff)) {
                 const label =
-                    diffDays === 0 ? "本日" :
-                    diffDays === 3 ? "3日前" : "7日前";
+                    diff === 0 ? "本日" :
+                    diff === 3 ? "3日前" : "7日前";
 
-                const channel = client.channels.cache.get(CHANNEL_ID);
-                if (channel) {
-                    channel.send(`${event.message} (${label})`);
-                }
+                const ch = client.channels.cache.get(CHANNEL_ID);
+                if (ch) ch.send(`${e.message} (${label})`);
             }
-        });
+        }
     });
-}); // ← ★これが無いとエラーになる（重要）
+});
 
-// コマンド処理
+// ====== コマンド処理 ======
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
-
-    const events = readEvents();
 
     if (interaction.commandName === "addevent") {
         const date = interaction.options.getString("date");
         const message = interaction.options.getString("message");
 
+        const events = await readEvents();
         events.push({ date, message });
-        writeEvents(events);
+        await writeEvents(events);
 
-        await interaction.reply(`イベント追加 ✅\n${date} : ${message}`);
+        return interaction.reply(`イベント追加 ✅\n${date} : ${message}`);
     }
 
     if (interaction.commandName === "listevents") {
+        const events = await readEvents();
         if (events.length === 0)
-            return interaction.reply("登録されているイベントはありません。");
+            return interaction.reply("登録イベントなし");
 
-        const list = events
-            .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
-            .join("\n");
-
-        await interaction.reply(`📅 登録イベント一覧:\n${list}`);
+        return interaction.reply(
+            events.map((e, i) =>
+                `${i + 1}. ${e.date} - ${e.message}`
+            ).join("\n")
+        );
     }
 
     if (interaction.commandName === "deleteevent") {
         const index = interaction.options.getInteger("index") - 1;
+        const events = await readEvents();
 
         if (index < 0 || index >= events.length)
-            return interaction.reply("無効な番号です。");
+            return interaction.reply("無効な番号");
 
         const removed = events.splice(index, 1);
-        writeEvents(events);
+        await writeEvents(events);
 
-        await interaction.reply(
-            `削除しました ✅\n${removed[0].date} - ${removed[0].message}`
+        return interaction.reply(
+            `削除完了 ✅\n${removed[0].date} - ${removed[0].message}`
         );
     }
 });
 
+// ====== 起動 ======
+client.login(TOKEN);
 
-console.log("TOKEN length:", TOKEN.length);
-console.log("Attempting Discord login...");
-
-client.login(TOKEN)
-    .then(() => {
-        console.log("✅ login() resolved");
-    })
-    .catch(err => {
-        console.error("❌ login() failed:", err);
-        process.exit(1);
-    });
-
-// ====== HTTPサーバー追加（スリープ回避用） ======
+// ====== HTTP サーバー ======
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("Bot is running ✅");
-}).listen(PORT, () => {
-    console.log(`HTTP server running on port ${PORT}`);
-});
+    res.end("Bot running");
+}).listen(PORT);
