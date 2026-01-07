@@ -65,22 +65,18 @@ async function updateEvents(mutator) {
 
         const events = JSON.parse(content || "[]");
 
-        // ★ mutator は events を直接変更するだけ
-        await mutator(events);
+        await mutator(events); // ← ここで直接 push や splice だけ
 
-        events.sort((a, b) =>
-            parseJSTDate(a.date) - parseJSTDate(b.date)
-        );
+        events.sort((a, b) => parseJSTDate(a.date) - parseJSTDate(b.date));
 
         await message.edit(
-            "```json\n" +
-            JSON.stringify(events, null, 2) +
-            "\n```"
+            "```json\n" + JSON.stringify(events, null, 2) + "\n```"
         );
 
-        return events;
+        return events; // ← 戻り値は編集済み配列そのまま
     });
 }
+
 
 // ====== 読み取り専用 ======
 async function readEventsLocked() {
@@ -202,12 +198,13 @@ client.on("interactionCreate", async interaction => {
             const message = interaction.options.getString("message");
 
             await updateEvents(events => {
-                events.push({
-                    id: crypto.randomUUID(),
-                    date,
-                    message
+   　　　　　　　 events.push({
+                id: crypto.randomUUID(),
+                date,
+                message
                 });
             });
+
 
             return interaction.editReply(
                 `追加しました ✅\n${date} - ${message}`
