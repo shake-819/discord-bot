@@ -169,14 +169,19 @@ client.once("ready", async () => {
 // ====== interaction（二重防止） ======
 const handledInteractions = new Set();
 
+// ====== interaction（二重防止・完全版） ======
+const handledInteractions = new Set();
+
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
-    if (handledInteractions.has(interaction.id)) return;
 
+    // 二重実行防止
+    if (handledInteractions.has(interaction.id)) return;
     handledInteractions.add(interaction.id);
     setTimeout(() => handledInteractions.delete(interaction.id), 60_000);
 
     try {
+        // ====== add ======
         if (interaction.commandName === "addevent") {
             await interaction.deferReply();
 
@@ -191,44 +196,53 @@ client.on("interactionCreate", async interaction => {
                 });
             });
 
-            return interaction.editReply(`追加しました ✅\n${date} : ${message}`);
+            return interaction.editReply(
+                `追加しました ✅\n${date} - ${message}`
+            );
         }
 
+        // ====== list ======
         if (interaction.commandName === "listevents") {
-    const events = await updateEvents(events => events);
+            const events = await updateEvents(events => events);
 
-    if (!events || events.length === 0) {
-        return interaction.reply("イベントなし");
-    }
+            if (!events || events.length === 0) {
+                return interaction.reply("イベントなし");
+            }
 
-    return interaction.reply(
-        events
-            .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
-            .join("\n")
-    );
-}
+            return interaction.reply(
+                events
+                    .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
+                    .join("\n")
+            );
+        }
 
-
+        // ====== delete（index 削除） ======
         if (interaction.commandName === "deleteevent") {
-    await interaction.deferReply();
+            await interaction.deferReply();
 
-    const index = interaction.options.getInteger("index") - 1;
+            const index = interaction.options.getInteger("index") - 1;
 
-    const removed = await updateEvents(events => {
-        if (index < 0 || index >= events.length) return null;
-        return events.splice(index, 1)[0];
-    });
+            const removed = await updateEvents(events => {
+                if (index < 0 || index >= events.length) return null;
+                return events.splice(index, 1)[0];
+            });
 
-    if (!removed) {
-        return interaction.editReply("無効な番号");
+            if (!removed) {
+                return interaction.editReply("無効な番号");
+            }
+
+            return interaction.editReply(
+                `削除しました ✅\n${removed.date} - ${removed.message}`
+            );
+        }
+    } catch (err) {
+        console.error("❌ interaction error:", err);
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply("⚠ 内部エラーが発生しました");
+        }
     }
-
-    return interaction.editReply(
-        `削除しました ✅\n${removed.date} - ${removed.message}`
-    );
-}
-
 });
+
 
 // ====== 起動 ======
 client.login(TOKEN);
