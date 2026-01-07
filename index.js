@@ -88,14 +88,21 @@ async function readEventsLocked() {
         const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
         const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
 
-        const content = message.content
-            .replace(/^```json\s*/i, "")
-            .replace(/\s*```$/, "")
-            .trim();
+        let content = message.content || "";
 
-        return JSON.parse(content || "[]");
+        // Discordのゼロ幅スペースや改行を除去
+        content = content.replace(/^```json\s*/i, "").replace(/\s*```$/i, "");
+        content = content.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+
+        try {
+            return JSON.parse(content || "[]");
+        } catch (e) {
+            console.error("⚠ JSON parse failed:", e, "content:", content);
+            return [];
+        }
     });
 }
+
 
 // ====== コマンド定義 ======
 const commands = [
