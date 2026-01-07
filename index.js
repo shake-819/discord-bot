@@ -159,34 +159,51 @@ const handledInteractions = new Set();
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
+    // 二重押し防止
     if (handledInteractions.has(interaction.id)) return;
     handledInteractions.add(interaction.id);
     setTimeout(() => handledInteractions.delete(interaction.id), 60_000);
 
-    try { await interaction.deferReply(); } catch { return; }
+    try {
+        await interaction.deferReply();
+    } catch {
+        return;
+    }
 
     try {
+        // ====== add event ======
         if (interaction.commandName === "addevent") {
             const date = interaction.options.getString("date");
-            const message = interaction.options.getString("message");
+            const messageText = interaction.options.getString("message");
 
             await updateEvents(events => {
-                // 同じ日付・内容の重複追加を防止
-                if (!events.some(e => e.date === date && e.message === message)) {
-                    events.push({ id: crypto.randomUUID(), date, message });
+                // 重複防止: 同じ日付・内容は追加しない
+                if (!events.some(e => e.date === date && e.message === messageText)) {
+                    events.push({ id: crypto.randomUUID(), date, message: messageText });
                 }
             });
 
-            return interaction.editReply(`追加しました ✅\n${date} - ${message}`);
+            // ★ edit 後に最新 fetch して確実に反映
+            const latestEvents = await readEventsLocked();
+
+            return interaction.editReply(
+                `追加しました ✅\n${date} - ${messageText}\n\n` +
+                `現在のイベント一覧:\n` +
+                latestEvents.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
+            );
         }
 
+        // ====== list events ======
         if (interaction.commandName === "listevents") {
             const events = await readEventsLocked();
             if (!events || events.length === 0) return interaction.editReply("イベントなし");
 
-            return interaction.editReply(events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n"));
+            return interaction.editReply(
+                events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
+            );
         }
 
+        // ====== delete event ======
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
             let removed;
@@ -195,6 +212,7 @@ client.on("interactionCreate", async interaction => {
             });
 
             if (!removed) return interaction.editReply("無効な番号");
+
             return interaction.editReply(`削除しました ✅\n${removed.date} - ${removed.message}`);
         }
 
@@ -204,6 +222,7 @@ client.on("interactionCreate", async interaction => {
         try { return interaction.editReply("⚠ 内部エラーが発生しました"); } catch {}
     }
 });
+
 
 // ====== 起動 ======
 client.login(TOKEN);
