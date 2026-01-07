@@ -143,42 +143,45 @@ client.once("ready", async () => {
     );
 
     // ====== 毎日 JST 0:00 ======
-    schedule.scheduleJob(
-        { hour: 0, minute: 0, tz: "Asia/Tokyo" },
-        async () => {
-            try {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
+    // 毎日 JST 0:00
+schedule.scheduleJob(
+    { hour: 0, minute: 0, tz: "Asia/Tokyo" },
+    async () => {
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-                await updateEvents(events => {
-                    const filtered = events.filter(e =>
-                        parseJSTDate(e.date) >= today
+            await updateEvents(events => {
+                // 過去イベントだけ削除
+                const filtered = events.filter(e => parseJSTDate(e.date) >= today);
+
+                // 7日・3日・0日前通知
+                for (const e of filtered) {
+                    const diff = Math.ceil(
+                        (parseJSTDate(e.date) - today) / 86400000
                     );
 
-                    for (const e of filtered) {
-                        const diff = Math.ceil(
-                            (parseJSTDate(e.date) - today) / 86400000
-                        );
+                    if ([7, 3, 0].includes(diff)) {
+                        const label =
+                            diff === 0 ? "本日" :
+                            diff === 3 ? "3日前" : "7日前";
 
-                        if ([7, 3, 0].includes(diff)) {
-                            const label =
-                                diff === 0 ? "本日" :
-                                diff === 3 ? "3日前" : "7日前";
-
-                            const ch = client.channels.cache.get(CHANNEL_ID);
-                            if (ch) ch.send(`${e.message} (${label})`);
-                        }
+                        const ch = client.channels.cache.get(CHANNEL_ID);
+                        if (ch) ch.send(`${e.message} (${label})`);
                     }
+                }
 
-                    events.length = 0;
-                    events.push(...filtered);
-                });
-            } catch (err) {
-                console.error("❌ 定期処理失敗:", err);
-            }
+                // ★ ここで events を丸ごと上書きしない
+                // 過去イベントだけを削除する
+                events.length = 0;
+                events.push(...filtered);
+            });
+        } catch (err) {
+            console.error("❌ 定期処理失敗:", err);
         }
-    );
-});
+    }
+);
+
 
 // ====== interaction（二重防止・Unknown interaction 対策） ======
 const handledInteractions = new Set();
