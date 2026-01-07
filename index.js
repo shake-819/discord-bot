@@ -49,10 +49,13 @@ async function readEvents() {
         return [];
     }
 }
-  async function writeEvents(events) {
+
+async function writeEvents(events) {
     try {
         const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
         const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
+
+        events.sort((a, b) => new Date(a.date) - new Date(b.date));
 
         await message.edit(
             "```json\n" + JSON.stringify(events, null, 2) + "\n```"
@@ -60,15 +63,6 @@ async function readEvents() {
     } catch (err) {
         console.error("❌ writeEvents failed:", err);
     }
-}
-
-
-
-    events.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    await message.edit(
-        "```json\n" + JSON.stringify(events, null, 2) + "\n```"
-    );
 }
 
 // ====== コマンド定義 ======
@@ -104,15 +98,15 @@ client.once("ready", async () => {
         { body: commands }
     );
 
-    // 毎日 JST 0:00
+    // 毎日 JST 0:00（UTC 15:00）
     schedule.scheduleJob("0 15 * * *", async () => {
         const now = new Date();
         const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
         const today = new Date(jst.getFullYear(), jst.getMonth(), jst.getDate());
 
         const events = await readEvents();
-
         const filtered = events.filter(e => new Date(e.date) >= today);
+
         await writeEvents(filtered);
 
         for (const e of filtered) {
@@ -144,9 +138,12 @@ client.on("interactionCreate", async interaction => {
 
         const events = await readEvents();
         events.push({ date, message });
+
         await writeEvents(events);
 
-        return interaction.reply(`イベント追加 ✅\n${date} : ${message}`);
+        return interaction.editReply(
+            `イベント追加 ✅\n${date} : ${message}`
+        );
     }
 
     if (interaction.commandName === "listevents") {
@@ -168,12 +165,12 @@ client.on("interactionCreate", async interaction => {
         const events = await readEvents();
 
         if (index < 0 || index >= events.length)
-            return interaction.reply("無効な番号");
+            return interaction.editReply("無効な番号");
 
         const removed = events.splice(index, 1);
         await writeEvents(events);
 
-        return interaction.reply(
+        return interaction.editReply(
             `削除完了 ✅\n${removed[0].date} - ${removed[0].message}`
         );
     }
@@ -187,3 +184,4 @@ const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     res.end("Bot running");
 }).listen(PORT);
+
