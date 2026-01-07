@@ -86,22 +86,27 @@ async function updateEvents(mutator) {
 async function readEventsLocked() {
     return await withWriteLock(async () => {
         const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
+        console.log("readEventsLocked: channel fetched", !!channel);
+
         const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
+        console.log("readEventsLocked: message fetched", !!message);
 
         let content = message.content || "";
-
-        // Discordのゼロ幅スペースや改行を除去
         content = content.replace(/^```json\s*/i, "").replace(/\s*```$/i, "");
         content = content.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+        console.log("readEventsLocked: content", content);
 
         try {
-            return JSON.parse(content || "[]");
+            const parsed = JSON.parse(content || "[]");
+            console.log("readEventsLocked: parsed length", parsed.length);
+            return parsed;
         } catch (e) {
             console.error("⚠ JSON parse failed:", e, "content:", content);
             return [];
         }
     });
 }
+
 
 
 // ====== コマンド定義 ======
@@ -211,20 +216,19 @@ client.on("interactionCreate", async interaction => {
         }
 
         // ====== list（★ 読み取り専用） ======
-        if (interaction.commandName === "listevents") {
-            const events = await readEventsLocked();
+       if (interaction.commandName === "listevents") {
+    const events = await readEventsLocked();
 
-            if (!events.length) {
-                return interaction.editReply("イベントなし");
-            }
+    if (!events.length) {
+        return interaction.editReply("イベントなし");
+    }
 
-            return interaction.editReply(
-                events
-                    .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
-                    .join("\n")
-            );
-        }
-
+    return interaction.editReply(
+        events
+            .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
+            .join("\n")
+    );
+}
         // ====== delete ======
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
