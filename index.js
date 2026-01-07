@@ -49,11 +49,7 @@ async function readEvents() {
         return [];
     }
 }
-
-async function writeEvents(events) {
-    const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
-    const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
-    async function writeEvents(events) {
+  async function writeEvents(events) {
     try {
         const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
         const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
@@ -65,6 +61,7 @@ async function writeEvents(events) {
         console.error("❌ writeEvents failed:", err);
     }
 }
+
 
 
     events.sort((a, b) => new Date(a.date) - new Date(b.date));
