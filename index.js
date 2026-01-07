@@ -137,50 +137,46 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 client.once("ready", async () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
 
+    // コマンド登録
     await rest.put(
         Routes.applicationGuildCommands(client.user.id, GUILD_ID),
         { body: commands }
     );
 
-    // ====== 毎日 JST 0:00 ======
-    // 毎日 JST 0:00
-schedule.scheduleJob(
-    { hour: 0, minute: 0, tz: "Asia/Tokyo" },
-    async () => {
-        try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+    // JST 0:00 定期処理
+    schedule.scheduleJob(
+        { hour: 0, minute: 0, tz: "Asia/Tokyo" },
+        async () => {
+            try {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
 
-            await updateEvents(events => {
-                // 過去イベントだけ削除
-                const filtered = events.filter(e => parseJSTDate(e.date) >= today);
+                await updateEvents(events => {
+                    const filtered = events.filter(e => parseJSTDate(e.date) >= today);
 
-                // 7日・3日・0日前通知
-                for (const e of filtered) {
-                    const diff = Math.ceil(
-                        (parseJSTDate(e.date) - today) / 86400000
-                    );
+                    for (const e of filtered) {
+                        const diff = Math.ceil(
+                            (parseJSTDate(e.date) - today) / 86400000
+                        );
 
-                    if ([7, 3, 0].includes(diff)) {
-                        const label =
-                            diff === 0 ? "本日" :
-                            diff === 3 ? "3日前" : "7日前";
-
-                        const ch = client.channels.cache.get(CHANNEL_ID);
-                        if (ch) ch.send(`${e.message} (${label})`);
+                        if ([7,3,0].includes(diff)) {
+                            const label = diff === 0 ? "本日" : diff === 3 ? "3日前" : "7日前";
+                            const ch = client.channels.cache.get(CHANNEL_ID);
+                            if (ch) ch.send(`${e.message} (${label})`);
+                        }
                     }
-                }
 
-                // ★ ここで events を丸ごと上書きしない
-                // 過去イベントだけを削除する
-                events.length = 0;
-                events.push(...filtered);
-            });
-        } catch (err) {
-            console.error("❌ 定期処理失敗:", err);
-        }
-    }
-);
+                    // 過去イベントだけ残す
+                    events.length = 0;
+                    events.push(...filtered);
+                });
+            } catch (err) {
+                console.error("❌ 定期処理失敗:", err);
+            }
+        } // ← ここで async function が閉じているか確認
+    );
+}); // ← ここで ready 関数が閉じているか確認
+
 
 
 // ====== interaction（二重防止・Unknown interaction 対策） ======
