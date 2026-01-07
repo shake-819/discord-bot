@@ -46,13 +46,15 @@ async function withWriteLock(fn) {
     }
 }
 
-// ====== JST 日付パース ======
+// ====== JST 日付パース（JST固定） ======
 function parseJSTDate(ymd) {
     const [y, m, d] = ymd.split("-").map(Number);
-    return new Date(y, m - 1, d);
+    const date = new Date(Date.UTC(y, m - 1, d));
+    date.setHours(date.getHours() + 9); // UTC→JST
+    return date;
 }
 
-// ====== Discord JSON ストレージ（保存専用・atomic） ======
+// ====== Discord JSON ストレージ（atomic） ======
 async function updateEvents(mutator) {
     return await withWriteLock(async () => {
         const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
@@ -61,49 +63,41 @@ async function updateEvents(mutator) {
         const content = message.content
             .replace(/^```json\s*/i, "")
             .replace(/\s*```$/, "")
+            .replace(/[\u200B-\u200D\uFEFF]/g, "")
             .trim();
 
         const events = JSON.parse(content || "[]");
 
-        await mutator(events); // ← ここで直接 push や splice だけ
+        await mutator(events); // ★ ここで直接配列を編集するだけ
 
+        // 日付順にソート
         events.sort((a, b) => parseJSTDate(a.date) - parseJSTDate(b.date));
 
         await message.edit(
             "```json\n" + JSON.stringify(events, null, 2) + "\n```"
         );
 
-        return events; // ← 戻り値は編集済み配列そのまま
+        return events;
     });
 }
 
-
-// ====== 読み取り専用 ======
 async function readEventsLocked() {
     return await withWriteLock(async () => {
         const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
-        console.log("readEventsLocked: channel fetched", !!channel);
-
         const message = await channel.messages.fetch(STORAGE_MESSAGE_ID);
-        console.log("readEventsLocked: message fetched", !!message);
 
         let content = message.content || "";
         content = content.replace(/^```json\s*/i, "").replace(/\s*```$/i, "");
         content = content.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
-        console.log("readEventsLocked: content", content);
 
         try {
-            const parsed = JSON.parse(content || "[]");
-            console.log("readEventsLocked: parsed length", parsed.length);
-            return parsed;
+            return JSON.parse(content || "[]");
         } catch (e) {
             console.error("⚠ JSON parse failed:", e, "content:", content);
             return [];
         }
     });
 }
-
-
 
 // ====== コマンド定義 ======
 const commands = [
@@ -133,13 +127,12 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 client.once("ready", async () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
 
-    // コマンド登録
     await rest.put(
         Routes.applicationGuildCommands(client.user.id, GUILD_ID),
         { body: commands }
     );
 
-    // JST 0:00 定期処理
+    // ====== 毎日 JST 0:00 過去イベント削除 ======
     schedule.scheduleJob(
         { hour: 0, minute: 0, tz: "Asia/Tokyo" },
         async () => {
@@ -150,32 +143,32 @@ client.once("ready", async () => {
                 await updateEvents(events => {
                     const filtered = events.filter(e => parseJSTDate(e.date) >= today);
 
+                    // 7日・3日・0日前通知
                     for (const e of filtered) {
-                        const diff = Math.ceil(
-                            (parseJSTDate(e.date) - today) / 86400000
-                        );
+                        const diff = Math.ceil((parseJSTDate(e.date) - today) / 86400000);
 
-                        if ([7,3,0].includes(diff)) {
-                            const label = diff === 0 ? "本日" : diff === 3 ? "3日前" : "7日前";
+                        if ([7, 3, 0].includes(diff)) {
+                            const label =
+                                diff === 0 ? "本日" :
+                                diff === 3 ? "3日前" : "7日前";
+
                             const ch = client.channels.cache.get(CHANNEL_ID);
                             if (ch) ch.send(`${e.message} (${label})`);
                         }
                     }
 
-                    // 過去イベントだけ残す
+                    // 過去イベントだけ削除
                     events.length = 0;
                     events.push(...filtered);
                 });
             } catch (err) {
                 console.error("❌ 定期処理失敗:", err);
             }
-        } // ← ここで async function が閉じているか確認
+        }
     );
-}); // ← ここで ready 関数が閉じているか確認
+});
 
-
-
-// ====== interaction（二重防止・Unknown interaction 対策） ======
+// ====== interaction（二重防止・完全版） ======
 const handledInteractions = new Set();
 
 client.on("interactionCreate", async interaction => {
@@ -198,37 +191,33 @@ client.on("interactionCreate", async interaction => {
             const message = interaction.options.getString("message");
 
             await updateEvents(events => {
-   　　　　　　　 events.push({
-                id: crypto.randomUUID(),
-                date,
-                message
+                events.push({
+                    id: crypto.randomUUID(),
+                    date,
+                    message
                 });
             });
 
+            return interaction.editReply(`追加しました ✅\n${date} - ${message}`);
+        }
 
+        // ====== list ======
+        if (interaction.commandName === "listevents") {
+            const events = await readEventsLocked();
+
+            if (!events || events.length === 0) {
+                return interaction.editReply("イベントなし");
+            }
+
+            // ★ 全件表示
             return interaction.editReply(
-                `追加しました ✅\n${date} - ${message}`
+                events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
             );
         }
 
-        // ====== list（★ 読み取り専用） ======
-       if (interaction.commandName === "listevents") {
-    const events = await readEventsLocked();
-
-    if (!events.length) {
-        return interaction.editReply("イベントなし");
-    }
-
-    return interaction.editReply(
-        events
-            .map((e, i) => `${i + 1}. ${e.date} - ${e.message}`)
-            .join("\n")
-    );
-}
         // ====== delete ======
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
-
             let removed;
             await updateEvents(events => {
                 if (index < 0 || index >= events.length) return;
@@ -239,9 +228,7 @@ client.on("interactionCreate", async interaction => {
                 return interaction.editReply("無効な番号");
             }
 
-            return interaction.editReply(
-                `削除しました ✅\n${removed.date} - ${removed.message}`
-            );
+            return interaction.editReply(`削除しました ✅\n${removed.date} - ${removed.message}`);
         }
 
         return interaction.editReply("不明なコマンドです");
