@@ -52,7 +52,7 @@ function parseJSTDate(ymd) {
     return new Date(y, m - 1, d);
 }
 
-// ====== Discord JSON ストレージ（atomic） ======
+// ====== Discord JSON ストレージ（保存専用・atomic） ======
 async function updateEvents(mutator) {
     return await withWriteLock(async () => {
         const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
@@ -63,9 +63,10 @@ async function updateEvents(mutator) {
             .replace(/\s*```$/, "")
             .trim();
 
-        const events = JSON.parse(content);
+        const events = JSON.parse(content || "[]");
 
-        const result = await mutator(events);
+        // ★ mutator は events を直接変更するだけ
+        await mutator(events);
 
         events.sort((a, b) =>
             parseJSTDate(a.date) - parseJSTDate(b.date)
@@ -77,10 +78,11 @@ async function updateEvents(mutator) {
             "\n```"
         );
 
-        return result;
+        return events;
     });
 }
 
+// ====== 読み取り専用 ======
 async function readEventsLocked() {
     return await withWriteLock(async () => {
         const channel = await client.channels.fetch(STORAGE_CHANNEL_ID);
@@ -91,7 +93,7 @@ async function readEventsLocked() {
             .replace(/\s*```$/, "")
             .trim();
 
-        return JSON.parse(content);
+        return JSON.parse(content || "[]");
     });
 }
 
@@ -166,24 +168,20 @@ client.once("ready", async () => {
     );
 });
 
-
-// ====== interaction（二重防止・完全版） ======
-// ====== interaction（二重防止・Unknown interaction 対策済み） ======
+// ====== interaction（二重防止・Unknown interaction 対策） ======
 const handledInteractions = new Set();
 
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // 二重実行防止
     if (handledInteractions.has(interaction.id)) return;
     handledInteractions.add(interaction.id);
     setTimeout(() => handledInteractions.delete(interaction.id), 60_000);
 
-    // ★ ここで必ず defer（3秒ルール対策）
     try {
         await interaction.deferReply();
     } catch {
-        return; // すでに失効している interaction
+        return;
     }
 
     try {
@@ -205,11 +203,11 @@ client.on("interactionCreate", async interaction => {
             );
         }
 
-        // ====== list ======
+        // ====== list（★ 読み取り専用） ======
         if (interaction.commandName === "listevents") {
-            const events = await updateEvents(events => events);
+            const events = await readEventsLocked();
 
-            if (!events || events.length === 0) {
+            if (!events.length) {
                 return interaction.editReply("イベントなし");
             }
 
@@ -220,13 +218,14 @@ client.on("interactionCreate", async interaction => {
             );
         }
 
-        // ====== delete（index 削除） ======
+        // ====== delete ======
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
 
-            const removed = await updateEvents(events => {
-                if (index < 0 || index >= events.length) return null;
-                return events.splice(index, 1)[0];
+            let removed;
+            await updateEvents(events => {
+                if (index < 0 || index >= events.length) return;
+                removed = events.splice(index, 1)[0];
             });
 
             if (!removed) {
@@ -238,19 +237,14 @@ client.on("interactionCreate", async interaction => {
             );
         }
 
-        // 万一コマンド不明
         return interaction.editReply("不明なコマンドです");
     } catch (err) {
         console.error("❌ interaction error:", err);
         try {
             return interaction.editReply("⚠ 内部エラーが発生しました");
-        } catch {
-            // interaction 完全失効時は何もしない
-        }
+        } catch {}
     }
 });
-
-
 
 // ====== 起動 ======
 client.login(TOKEN);
@@ -260,4 +254,3 @@ const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     res.end("Bot running");
 }).listen(PORT);
-
