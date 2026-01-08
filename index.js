@@ -85,70 +85,63 @@ client.once("ready", async () => {
 });
 
 // ====== interaction ======
-client.on("interactionCreate", async interaction => {
+client.on("interactionCreate", interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // ★ 修正点：安全に acknowledge
-    try {
-        await interaction.deferReply();
-    } catch {
-        return;
-    }
+    interaction.deferReply({ ephemeral: true }).catch(() => {});
 
-    try {
-        if (interaction.commandName === "addevent") {
-            const date = interaction.options.getString("date");
-            const message = interaction.options.getString("message");
-
-            await base(AIRTABLE_TABLE).create({
-                date,
-                message,
-                uid: crypto.randomBytes(16).toString("hex"),
-            });
-
-            return interaction.editReply(`追加しました ✅\n${date} - ${message}`);
-        }
-
-        if (interaction.commandName === "listevents") {
-            const records = await base(AIRTABLE_TABLE)
-                .select({ sort: [{ field: "date", direction: "asc" }] })
-                .all();
-
-            if (records.length === 0) {
-                return interaction.editReply("イベントなし");
-            }
-
-            return interaction.editReply(
-                records.map((r, i) =>
-                    `${i + 1}. ${r.get("date")} - ${r.get("message")}`
-                ).join("\n")
-            );
-        }
-
-        if (interaction.commandName === "deleteevent") {
-            const index = interaction.options.getInteger("index") - 1;
-
-            const records = await base(AIRTABLE_TABLE)
-                .select({ sort: [{ field: "date", direction: "asc" }] })
-                .all();
-
-            if (index < 0 || index >= records.length) {
-                return interaction.editReply("無効な番号");
-            }
-
-            await base(AIRTABLE_TABLE).destroy(records[index].id);
-
-            return interaction.editReply("削除しました ✅");
-        }
-
-        return interaction.editReply("不明なコマンドです");
-    } catch (err) {
-        console.error("❌ interaction error:", err);
+    (async () => {
         try {
-            return interaction.editReply("⚠ 内部エラーが発生しました");
-        } catch {}
-    }
+            if (interaction.commandName === "addevent") {
+                const date = interaction.options.getString("date");
+                const message = interaction.options.getString("message");
+
+                await base(AIRTABLE_TABLE).create({
+                    date,
+                    message,
+                    uid: crypto.randomBytes(16).toString("hex"),
+                });
+
+                await interaction.editReply(`追加しました ✅\n${date} - ${message}`);
+            }
+
+            if (interaction.commandName === "listevents") {
+                const records = await base(AIRTABLE_TABLE)
+                    .select({ sort: [{ field: "date", direction: "asc" }] })
+                    .all();
+
+                if (records.length === 0) {
+                    return interaction.editReply("イベントなし");
+                }
+
+                await interaction.editReply(
+                    records.map((r, i) =>
+                        `${i + 1}. ${r.get("date")} - ${r.get("message")}`
+                    ).join("\n")
+                );
+            }
+
+            if (interaction.commandName === "deleteevent") {
+                const index = interaction.options.getInteger("index") - 1;
+
+                const records = await base(AIRTABLE_TABLE)
+                    .select({ sort: [{ field: "date", direction: "asc" }] })
+                    .all();
+
+                if (index < 0 || index >= records.length) {
+                    return interaction.editReply("無効な番号");
+                }
+
+                await base(AIRTABLE_TABLE).destroy(records[index].id);
+                await interaction.editReply("削除しました ✅");
+            }
+        } catch (err) {
+            console.error(err);
+            interaction.editReply("⚠ エラーが発生しました").catch(() => {});
+        }
+    })();
 });
+
 
 console.log("Trying Discord login...");
 client.login(TOKEN)
