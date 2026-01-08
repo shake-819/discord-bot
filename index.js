@@ -150,9 +150,10 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
-// ====== 起動 ======
-
-client.login(TOKEN);
+console.log("Trying Discord login...");
+client.login(TOKEN)
+  .then(() => console.log("Login promise resolved"))
+  .catch(e => console.error("Login failed:", e));
 
 
 // ====== HTTP ======
