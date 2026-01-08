@@ -152,16 +152,14 @@ client.on("interactionCreate", async interaction => {
 
 // ====== 起動 ======
 console.log("LOGIN CALL");
-/
 
 client.on("debug", m => console.log("[DEBUG]", m));
 client.on("warn", m => console.log("[WARN]", m));
 client.on("error", e => console.error("[CLIENT ERROR]", e));
 client.on("shardError", e => console.error("[SHARD ERROR]", e));
 
-
-
 client.login(TOKEN);
+
 
 // ====== HTTP ======
 const PORT = process.env.PORT || 3000;
