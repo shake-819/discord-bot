@@ -103,7 +103,7 @@ client.on("interactionCreate", async interaction => {
             await base(AIRTABLE_TABLE).create({
                 date,
                 message,
-                uid: crypto.randomBytes(16).toString("hex")
+                uid: crypto.randomBytes(16).toString("hex"),
             });
 
             return interaction.editReply(`追加しました ✅\n${date} - ${message}`);
