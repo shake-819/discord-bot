@@ -88,7 +88,7 @@ client.once("ready", async () => {
 client.on("interactionCreate", interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    interaction.deferReply({ ephemeral: true }).catch(() => {});
+    interaction.deferReply().catch(() => {});
 
     (async () => {
         try {
@@ -96,11 +96,18 @@ client.on("interactionCreate", interaction => {
                 const date = interaction.options.getString("date");
                 const message = interaction.options.getString("message");
 
-                await base(AIRTABLE_TABLE).create({
+                const record = await base(AIRTABLE_TABLE).create({
                     ID: crypto.randomBytes(16).toString("hex"),
-                    Date: date,
+                    Data: date,
                     Massage: message,
                 });
+
+                console.log("Airtable created:", record.id);
+
+                await interaction.editReply(
+                    `追加しました ✅\n${date} - ${message}`
+                );
+            }
 
 
                 await interaction.editReply(`追加しました ✅\n${date} - ${message}`);
@@ -108,8 +115,8 @@ client.on("interactionCreate", interaction => {
 
             if (interaction.commandName === "listevents") {
                 const records = await base(AIRTABLE_TABLE)
-                    .select({ sort: [{ field: "date", direction: "asc" }] })
-                    .all();
+                    .select({ sort: [{ field: "Data", direction: "asc" }] })
+                    .firstPage();
 
                 if (records.length === 0) {
                     return interaction.editReply("イベントなし");
@@ -117,9 +124,11 @@ client.on("interactionCreate", interaction => {
 
                 await interaction.editReply(
                     records.map((r, i) =>
-                        `${i + 1}. ${r.get("date")} - ${r.get("message")}`
+                        `${i + 1}. ${r.get("Data")} - ${r.get("Massage")}`
                     ).join("\n")
                 );
+             }
+
             }
 
             if (interaction.commandName === "deleteevent") {
