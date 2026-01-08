@@ -31,6 +31,12 @@ if (!TOKEN || !CHANNEL_ID || !GUILD_ID || !AIRTABLE_TOKEN || !AIRTABLE_BASE_ID |
 const base = new Airtable({
     apiKey: AIRTABLE_TOKEN,
 }).base(AIRTABLE_BASE_ID);
+console.log("AIRTABLE CHECK", {
+  hasToken: !!AIRTABLE_TOKEN,
+  baseId: AIRTABLE_BASE_ID,
+  table: AIRTABLE_TABLE
+});
+
 
 // ====== クライアント ======
 const client = new Client({
