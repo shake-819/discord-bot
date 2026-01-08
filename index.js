@@ -4,8 +4,10 @@ const {
     Partials,
     REST,
     Routes,
-    SlashCommandBuilder,
 } = require("discord.js");
+
+const { SlashCommandBuilder } = require("@discordjs/builders");
+
 const schedule = require("node-schedule");
 const http = require("http");
 const crypto = require("crypto");
