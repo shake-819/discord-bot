@@ -4,10 +4,8 @@ const {
     Partials,
     REST,
     Routes,
+    SlashCommandBuilder,
 } = require("discord.js");
-
-const { SlashCommandBuilder } = require("@discordjs/builders");
-
 const schedule = require("node-schedule");
 const http = require("http");
 const crypto = require("crypto");
@@ -90,11 +88,14 @@ client.once("ready", async () => {
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // 🔥 最優先で acknowledge
-    await interaction.deferReply();
+    // ★ 修正点：安全に acknowledge
+    try {
+        await interaction.deferReply();
+    } catch {
+        return;
+    }
 
     try {
-        // ====== add ======
         if (interaction.commandName === "addevent") {
             const date = interaction.options.getString("date");
             const message = interaction.options.getString("message");
@@ -108,7 +109,6 @@ client.on("interactionCreate", async interaction => {
             return interaction.editReply(`追加しました ✅\n${date} - ${message}`);
         }
 
-        // ====== list ======
         if (interaction.commandName === "listevents") {
             const records = await base(AIRTABLE_TABLE)
                 .select({ sort: [{ field: "date", direction: "asc" }] })
@@ -125,7 +125,6 @@ client.on("interactionCreate", async interaction => {
             );
         }
 
-        // ====== delete ======
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
 
@@ -142,18 +141,20 @@ client.on("interactionCreate", async interaction => {
             return interaction.editReply("削除しました ✅");
         }
 
-        interaction.editReply("不明なコマンドです");
+        return interaction.editReply("不明なコマンドです");
     } catch (err) {
         console.error("❌ interaction error:", err);
         try {
-            interaction.editReply("⚠ 内部エラーが発生しました");
+            return interaction.editReply("⚠ 内部エラーが発生しました");
         } catch {}
     }
 });
 
 // ====== 起動 ======
+console.log("LOGIN CALL");
 client.login(TOKEN);
 
 // ====== HTTP ======
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => res.end("Bot running")).listen(PORT);
+
