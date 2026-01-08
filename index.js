@@ -24,10 +24,7 @@ const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE = process.env.AIRTABLE_TABLE;
 
-if (!TOKEN || !CHANNEL_ID || !GUILD_ID || !AIRTABLE_TOKEN || !AIRTABLE_BASE_ID || !AIRTABLE_TABLE) {
-    console.error("❌ 環境変数が不足しています");
-    process.exit(1);
-}
+
 
 // ====== Airtable ======
 const base = new Airtable({
