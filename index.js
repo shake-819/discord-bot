@@ -100,7 +100,7 @@ client.on("interactionCreate", interaction => {
 
                 const record = await base(AIRTABLE_TABLE).create({
                     ID: crypto.randomBytes(16).toString("hex"),
-                    Data: date,
+                    Date: date,
                     Massage: message,
                 });
 
