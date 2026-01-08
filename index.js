@@ -97,10 +97,11 @@ client.on("interactionCreate", interaction => {
                 const message = interaction.options.getString("message");
 
                 await base(AIRTABLE_TABLE).create({
-                    date,
-                    message,
-                    uid: crypto.randomBytes(16).toString("hex"),
+                    ID: crypto.randomBytes(16).toString("hex"),
+                    Date: date,
+                    Massage: message,
                 });
+
 
                 await interaction.editReply(`追加しました ✅\n${date} - ${message}`);
             }
