@@ -157,9 +157,10 @@ async function checkEvents() {
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    await interaction.deferReply();
-
     try {
+        // 🔧 ここを try の中へ
+        await interaction.deferReply();
+
         let { events, sha } = await loadEvents();
 
         // 日付順に並べる関数
@@ -235,11 +236,16 @@ client.on("interactionCreate", async interaction => {
 
     } catch (err) {
         console.error("interaction error:", err);
-        try {
-            await interaction.editReply("⚠ エラーが発生しました");
-        } catch {}
+
+        // 🔧 interaction が死んでいる可能性があるのでガード
+        if (interaction.deferred || interaction.replied) {
+            try {
+                await interaction.editReply("⚠ エラーが発生しました");
+            } catch {}
+        }
     }
 });
+
 
 // ===== Start =====
 console.log("Trying Discord login...");
