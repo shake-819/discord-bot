@@ -9,56 +9,85 @@ const {
     Routes,
     SlashCommandBuilder,
 } = require("discord.js");
-const schedule = require("node-schedule");
+
 const http = require("http");
 const crypto = require("crypto");
-const Airtable = require("airtable");
+const fetch = require("node-fetch");
 
 console.log("BOOT START");
 
-// ====== 環境変数 ======
+// ===== ENV =====
 const TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const GUILD_ID = process.env.GUILD_ID;
-const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
-const AIRTABLE_TABLE = process.env.AIRTABLE_TABLE;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_REPO = process.env.GITHUB_REPO; // username/repo
+const EVENTS_PATH = "events.json";
 
-
-
-// ====== Airtable ======
-const base = new Airtable({
-    apiKey: AIRTABLE_TOKEN,
-}).base(AIRTABLE_BASE_ID);
-
-// ====== Discord client ======
+// ===== Discord =====
 const client = new Client({
     intents: [GatewayIntentBits.Guilds],
     partials: [Partials.Channel],
 });
 
-// ====== エラー監視 ======
-process.on("uncaughtException", err => console.error("Uncaught:", err));
-process.on("unhandledRejection", err => console.error("Unhandled:", err));
+// ===== GitHub API =====
+const ghHeaders = {
+    "Authorization": `token ${GITHUB_TOKEN}`,
+    "User-Agent": "discord-bot",
+    "Accept": "application/vnd.github+json"
+};
 
-// ====== JST 日付 ======
-function parseJSTDate(ymd) {
-    const [y, m, d] = ymd.split("-").map(Number);
-    const date = new Date(Date.UTC(y, m - 1, d));
-    date.setHours(date.getHours() + 9);
-    return date;
+async function loadEvents() {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`, {
+        headers: ghHeaders
+    });
+
+    if (res.status === 404) return { events: [], sha: null };
+
+    const data = await res.json();
+    const json = Buffer.from(data.content, "base64").toString();
+    return { events: JSON.parse(json), sha: data.sha };
 }
 
-// ====== Slash Commands ======
+async function saveEvents(events, sha) {
+    const body = {
+        message: "update events",
+        content: Buffer.from(JSON.stringify(events, null, 2)).toString("base64"),
+        sha
+    };
+
+    await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`, {
+        method: "PUT",
+        headers: { ...ghHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    });
+}
+
+// ===== JST utils =====
+function getJSTToday() {
+    const d = new Date(Date.now() + 9 * 3600000);
+    d.setUTCHours(0, 0, 0, 0);
+    return d;
+}
+
+function daysUntil(dateStr) {
+    const today = getJSTToday();
+    const target = new Date(dateStr + "T00:00:00+09:00");
+    return Math.floor((target - today) / 86400000);
+}
+
+// ===== Slash Commands =====
 const commands = [
     new SlashCommandBuilder()
         .setName("addevent")
         .setDescription("イベント追加")
         .addStringOption(o => o.setName("date").setDescription("YYYY-MM-DD").setRequired(true))
         .addStringOption(o => o.setName("message").setDescription("内容").setRequired(true)),
+
     new SlashCommandBuilder()
         .setName("listevents")
         .setDescription("イベント一覧"),
+
     new SlashCommandBuilder()
         .setName("deleteevent")
         .setDescription("イベント削除")
@@ -67,122 +96,103 @@ const commands = [
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-// ====== READY ======
+// ===== READY =====
 client.once("ready", async () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
-
-    try {
-        await base(AIRTABLE_TABLE).select({ maxRecords: 1 }).firstPage();
-        console.log("✅ Airtable connected");
-    } catch (e) {
-        console.error("❌ Airtable error:", e);
-    }
 
     await rest.put(
         Routes.applicationGuildCommands(client.user.id, GUILD_ID),
         { body: commands }
     );
+
+    scheduleDaily();
 });
 
-function withTimeout(promise, ms = 5000) {
-    return Promise.race([
-        promise,
-        new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Airtable timeout")), ms)
-        ),
-    ]);
+// ===== Scheduler =====
+function scheduleDaily() {
+    setInterval(checkEvents, 60 * 1000); // 毎分 0:00判定
 }
 
-client.on("interactionCreate", interaction => {
+let lastRun = null;
+
+async function checkEvents() {
+    const now = new Date(Date.now() + 9 * 3600000);
+    if (now.getUTCHours() !== 0) return;
+
+    const today = now.toDateString();
+    if (lastRun === today) return;
+    lastRun = today;
+
+    const { events, sha } = await loadEvents();
+    const channel = await client.channels.fetch(CHANNEL_ID);
+
+    const newEvents = [];
+
+    for (const e of events) {
+        const d = daysUntil(e.date);
+
+        if (d < 0) continue; // 期限切れ → 削除
+
+        if (d === 7 && !e.n7) {
+            await channel.send(`📅【7日前】${e.date} - ${e.message}`);
+            e.n7 = true;
+        }
+
+        if (d === 3 && !e.n3) {
+            await channel.send(`📅【3日前】${e.date} - ${e.message}`);
+            e.n3 = true;
+        }
+
+        if (d === 0 && !e.n0) {
+            await channel.send(`📅【今日】${e.date} - ${e.message}`);
+            e.n0 = true;
+        }
+
+        newEvents.push(e);
+    }
+
+    await saveEvents(newEvents, sha);
+}
+
+// ===== Interactions =====
+client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    (async () => {
-        try {
-            // === 1. Discord に即 ACK ===
-            await interaction.deferReply();
+    await interaction.deferReply();
 
-            // === 2. コマンド判定 ===
-            if (interaction.commandName === "addevent") {
-                const date = interaction.options.getString("date");
-                const message = interaction.options.getString("message");
+    const { events, sha } = await loadEvents();
 
-                console.log("addevent start");
+    if (interaction.commandName === "addevent") {
+        events.push({
+            id: crypto.randomBytes(8).toString("hex"),
+            date: interaction.options.getString("date"),
+            message: interaction.options.getString("message"),
+            n7: false, n3: false, n0: false
+        });
 
-                const record = await withTimeout(
-                    base(AIRTABLE_TABLE).create({
-                        ID: crypto.randomBytes(16).toString("hex"),
-                        Date: date,
-                        Message: message,
-                    }),
-                    5000
-                );
+        await saveEvents(events, sha);
+        await interaction.editReply("追加しました ✅");
+    }
 
-                console.log("Airtable created:", record.id);
+    if (interaction.commandName === "listevents") {
+        if (!events.length) return interaction.editReply("なし");
 
-                await interaction.editReply(`追加しました ✅\n${date} - ${message}`);
-                return;
-            }
+        await interaction.editReply(
+            events.map((e, i) => `${i+1}. ${e.date} - ${e.message}`).join("\n")
+        );
+    }
 
-            if (interaction.commandName === "listevents") {
-                const records = await withTimeout(
-                    base(AIRTABLE_TABLE)
-                        .select({ sort: [{ field: "Date", direction: "asc" }] })
-                        .firstPage(),
-                    5000
-                );
-
-                if (records.length === 0) {
-                    await interaction.editReply("イベントなし");
-                    return;
-                }
-
-                await interaction.editReply(
-                    records.map((r, i) =>
-                        `${i + 1}. ${r.get("Date")} - ${r.get("Message")}`
-                    ).join("\n")
-                );
-                return;
-            }
-
-            if (interaction.commandName === "deleteevent") {
-                const index = interaction.options.getInteger("index") - 1;
-
-                const records = await withTimeout(
-                    base(AIRTABLE_TABLE)
-                        .select({ sort: [{ field: "Date", direction: "asc" }] })
-                        .firstPage(),
-                    5000
-                );
-
-                if (index < 0 || index >= records.length) {
-                    await interaction.editReply("無効な番号");
-                    return;
-                }
-
-                await base(AIRTABLE_TABLE).destroy(records[index].id);
-                await interaction.editReply("削除しました ✅");
-                return;
-            }
-
-            await interaction.editReply("不明なコマンド");
-        } catch (err) {
-            console.error("interaction error:", err);
-            try {
-                await interaction.editReply("⚠ エラー");
-            } catch {}
-        }
-    })();
+    if (interaction.commandName === "deleteevent") {
+        const i = interaction.options.getInteger("index") - 1;
+        events.splice(i, 1);
+        await saveEvents(events, sha);
+        await interaction.editReply("削除しました");
+    }
 });
 
-
-
+// ===== Start =====
 console.log("Trying Discord login...");
-client.login(TOKEN)
-  .then(() => console.log("Login promise resolved"))
-  .catch(e => console.error("Login failed:", e));
+client.login(TOKEN);
 
-
-// ====== HTTP ======
-const PORT = process.env.PORT || 3000;
-http.createServer((req, res) => res.end("Bot running")).listen(PORT);
-
+// ===== HTTP =====
+http.createServer((req, res) => res.end("OK")).listen(process.env.PORT || 3000);
