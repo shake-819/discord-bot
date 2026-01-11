@@ -154,39 +154,90 @@ async function checkEvents() {
     await saveEvents(newEvents, sha);
 }
 
-// ===== Interactions =====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     await interaction.deferReply();
 
-    const { events, sha } = await loadEvents();
+    try {
+        let { events, sha } = await loadEvents();
 
-    if (interaction.commandName === "addevent") {
-        events.push({
-            id: crypto.randomBytes(8).toString("hex"),
-            date: interaction.options.getString("date"),
-            message: interaction.options.getString("message"),
-            n7: false, n3: false, n0: false
-        });
+        // 日付順に並べる関数
+        function sortEventsByDate(events) {
+            return events.sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
 
-        await saveEvents(events, sha);
-        await interaction.editReply("追加しました ✅");
-    }
+        // ===== 追加 =====
+        if (interaction.commandName === "addevent") {
+            const date = interaction.options.getString("date");
+            const message = interaction.options.getString("message");
 
-    if (interaction.commandName === "listevents") {
-        if (!events.length) return interaction.editReply("なし");
+            events.push({
+                id: crypto.randomBytes(8).toString("hex"),
+                date,
+                message,
+                n7: false,
+                n3: false,
+                n0: false
+            });
 
-        await interaction.editReply(
-            events.map((e, i) => `${i+1}. ${e.date} - ${e.message}`).join("\n")
-        );
-    }
+            await saveEvents(events, sha);
 
-    if (interaction.commandName === "deleteevent") {
-        const i = interaction.options.getInteger("index") - 1;
-        events.splice(i, 1);
-        await saveEvents(events, sha);
-        await interaction.editReply("削除しました");
+            await interaction.editReply(
+                `追加しました ✅\n📅 ${date}\n📝 ${message}`
+            );
+            return;
+        }
+
+        // ===== 一覧 =====
+        if (interaction.commandName === "listevents") {
+            if (!events.length) {
+                await interaction.editReply("イベントはありません");
+                return;
+            }
+
+            const sorted = sortEventsByDate(events);
+
+            await interaction.editReply(
+                sorted.map((e, i) =>
+                    `${i + 1}. ${e.date} - ${e.message}`
+                ).join("\n")
+            );
+            return;
+        }
+
+        // ===== 削除 =====
+        if (interaction.commandName === "deleteevent") {
+            const index = interaction.options.getInteger("index") - 1;
+
+            const sorted = sortEventsByDate(events);
+
+            if (index < 0 || index >= sorted.length) {
+                await interaction.editReply("無効な番号です");
+                return;
+            }
+
+            const removed = sorted[index];
+
+            // 元配列から正確に削除
+            const realIndex = events.findIndex(e => e.id === removed.id);
+            events.splice(realIndex, 1);
+
+            await saveEvents(events, sha);
+
+            await interaction.editReply(
+                `削除しました 🗑\n📅 ${removed.date}\n📝 ${removed.message}`
+            );
+            return;
+        }
+
+        await interaction.editReply("不明なコマンドです");
+
+    } catch (err) {
+        console.error("interaction error:", err);
+        try {
+            await interaction.editReply("⚠ エラーが発生しました");
+        } catch {}
     }
 });
 
