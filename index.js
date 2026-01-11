@@ -84,6 +84,15 @@ client.once("ready", async () => {
     );
 });
 
+function withTimeout(promise, ms = 5000) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Airtable timeout")), ms)
+        ),
+    ]);
+}
+
 // ====== interaction ======
 client.on("interactionCreate", interaction => {
     if (!interaction.isChatInputCommand()) return;
