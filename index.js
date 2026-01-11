@@ -88,21 +88,25 @@ client.once("ready", async () => {
 client.on("interactionCreate", interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // 最優先で ACK（タイムアウト防止）
-    interaction.deferReply({ ephemeral: false }).catch(() => {});
+    // 正しい ACK（v14+）
+    interaction.deferReply().catch(() => {});
 
     (async () => {
         try {
-            // ===== イベント追加 =====
             if (interaction.commandName === "addevent") {
                 const date = interaction.options.getString("date");
                 const message = interaction.options.getString("message");
 
-                const record = await base(AIRTABLE_TABLE).create({
-                    ID: crypto.randomBytes(16).toString("hex"),
-                    Date: date,
-                    Massage: message,
-                });
+                console.log("addevent start");
+
+                const record = await withTimeout(
+                    base(AIRTABLE_TABLE).create({
+                        ID: crypto.randomBytes(16).toString("hex"),
+                        Date: date,
+                        Massage: message,
+                    }),
+                    5000
+                );
 
                 console.log("Airtable created:", record.id);
 
@@ -112,42 +116,36 @@ client.on("interactionCreate", interaction => {
                 return;
             }
 
-            // ===== イベント一覧 =====
             if (interaction.commandName === "listevents") {
-                console.log("listing events start");
-
-                const records = await base(AIRTABLE_TABLE)
-                    .select({
-                        sort: [{ field: "Data", direction: "asc" }],
-                    })
-                    .firstPage();
-
-                console.log("listing events done:", records.length);
+                const records = await withTimeout(
+                    base(AIRTABLE_TABLE)
+                        .select({ sort: [{ field: "Data", direction: "asc" }] })
+                        .firstPage(),
+                    5000
+                );
 
                 if (records.length === 0) {
                     await interaction.editReply("イベントなし");
                     return;
                 }
 
-                const text = records
-                    .map((r, i) => {
-                        return `${i + 1}. ${r.get("Data")} - ${r.get("Massage")}`;
-                    })
-                    .join("\n");
-
-                await interaction.editReply(text);
+                await interaction.editReply(
+                    records
+                        .map((r, i) => `${i + 1}. ${r.get("Data")} - ${r.get("Massage")}`)
+                        .join("\n")
+                );
                 return;
             }
 
-            // ===== イベント削除 =====
             if (interaction.commandName === "deleteevent") {
                 const index = interaction.options.getInteger("index") - 1;
 
-                const records = await base(AIRTABLE_TABLE)
-                    .select({
-                        sort: [{ field: "Data", direction: "asc" }],
-                    })
-                    .firstPage();
+                const records = await withTimeout(
+                    base(AIRTABLE_TABLE)
+                        .select({ sort: [{ field: "Data", direction: "asc" }] })
+                        .firstPage(),
+                    5000
+                );
 
                 if (index < 0 || index >= records.length) {
                     await interaction.editReply("無効な番号");
@@ -160,11 +158,12 @@ client.on("interactionCreate", interaction => {
                 return;
             }
 
-            // ===== 不明なコマンド =====
             await interaction.editReply("不明なコマンドです");
         } catch (err) {
             console.error("interaction error:", err);
-            await interaction.editReply("⚠ エラーが発生しました");
+            try {
+                await interaction.editReply("⚠ エラーが発生しました");
+            } catch {}
         }
     })();
 });
