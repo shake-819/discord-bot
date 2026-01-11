@@ -184,7 +184,7 @@ client.on("interactionCreate", async interaction => {
             await saveEvents(events, sha);
 
             await interaction.editReply(
-                `追加しました ✅\n📅 ${date}\n📝 ${message}`
+                `追加しました ✅\n📅 ${date} ${message}`
             );
             return;
         }
@@ -226,7 +226,7 @@ client.on("interactionCreate", async interaction => {
             await saveEvents(events, sha);
 
             await interaction.editReply(
-                `削除しました 🗑\n📅 ${removed.date}\n📝 ${removed.message}`
+                `削除しました 🗑\n📅 ${removed.date} ${removed.message}`
             );
             return;
         }
