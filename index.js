@@ -116,8 +116,8 @@ client.on("interactionCreate", async interaction => {
             const record = await withTimeout(
                 base(AIRTABLE_TABLE).create({
                     ID: crypto.randomBytes(16).toString("hex"),
-                    Data: date,
-                    Massage: message,
+                    Date: date,
+                    Message: message,
                 }),
                 5000
             );
