@@ -121,7 +121,7 @@ async function checkEvents() {
     const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
 
     // JSTの0時以外は何もしない
-    if (jst.getUTCHours() !== 0) return;
+    //if (jst.getUTCHours() !== 0) return;
 
     const today = jst.toISOString().slice(0, 10);
     if (lastRun === today) return;
