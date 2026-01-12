@@ -115,11 +115,18 @@ function scheduleDaily() {
 
 let lastRun = null;
 
+// ===== 修正された JST 0時判定 =====
 async function checkEvents() {
-    const now = new Date(Date.now() + 9 * 3600000);
-    if (now.getUTCHours() !== 0) return;
+    const now = new Date();
 
-    const today = now.toDateString();
+    // JSTに変換
+    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+
+    // JSTの0時以外は実行しない
+    if (jst.getUTCHours() !== 0) return;
+
+    // JSTの日付で1日1回制御
+    const today = jst.toISOString().slice(0, 10);
     if (lastRun === today) return;
     lastRun = today;
 
@@ -158,17 +165,14 @@ client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     try {
-        // 🔧 ここを try の中へ
         await interaction.deferReply();
 
         let { events, sha } = await loadEvents();
 
-        // 日付順に並べる関数
         function sortEventsByDate(events) {
             return events.sort((a, b) => new Date(a.date) - new Date(b.date));
         }
 
-        // ===== 追加 =====
         if (interaction.commandName === "addevent") {
             const date = interaction.options.getString("date");
             const message = interaction.options.getString("message");
@@ -184,13 +188,10 @@ client.on("interactionCreate", async interaction => {
 
             await saveEvents(events, sha);
 
-            await interaction.editReply(
-                `追加しました ✅\n📅 ${date} ${message}`
-            );
+            await interaction.editReply(`追加しました ✅\n📅 ${date} ${message}`);
             return;
         }
 
-        // ===== 一覧 =====
         if (interaction.commandName === "listevents") {
             if (!events.length) {
                 await interaction.editReply("イベントはありません");
@@ -200,14 +201,11 @@ client.on("interactionCreate", async interaction => {
             const sorted = sortEventsByDate(events);
 
             await interaction.editReply(
-                sorted.map((e, i) =>
-                    `${i + 1}. ${e.date} - ${e.message}`
-                ).join("\n")
+                sorted.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
             );
             return;
         }
 
-        // ===== 削除 =====
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
 
@@ -219,16 +217,12 @@ client.on("interactionCreate", async interaction => {
             }
 
             const removed = sorted[index];
-
-            // 元配列から正確に削除
             const realIndex = events.findIndex(e => e.id === removed.id);
             events.splice(realIndex, 1);
 
             await saveEvents(events, sha);
 
-            await interaction.editReply(
-                `削除しました 🗑\n📅 ${removed.date} ${removed.message}`
-            );
+            await interaction.editReply(`削除しました 🗑\n📅 ${removed.date} ${removed.message}`);
             return;
         }
 
@@ -236,16 +230,11 @@ client.on("interactionCreate", async interaction => {
 
     } catch (err) {
         console.error("interaction error:", err);
-
-        // 🔧 interaction が死んでいる可能性があるのでガード
         if (interaction.deferred || interaction.replied) {
-            try {
-                await interaction.editReply("⚠ エラーが発生しました");
-            } catch {}
+            try { await interaction.editReply("⚠ エラーが発生しました"); } catch {}
         }
     }
 });
-
 
 // ===== Start =====
 console.log("Trying Discord login...");
@@ -253,3 +242,4 @@ client.login(TOKEN);
 
 // ===== HTTP =====
 http.createServer((req, res) => res.end("OK")).listen(process.env.PORT || 3000);
+
