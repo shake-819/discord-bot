@@ -115,17 +115,14 @@ function scheduleDaily() {
 
 let lastRun = null;
 
-// ===== 修正された JST 0時判定 =====
+// ===== JST 0時 ＆ 期限切れ削除 修正版 =====
 async function checkEvents() {
     const now = new Date();
-
-    // JSTに変換
     const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
 
-    // JSTの0時以外は実行しない
+    // JSTの0時以外は何もしない
     if (jst.getUTCHours() !== 0) return;
 
-    // JSTの日付で1日1回制御
     const today = jst.toISOString().slice(0, 10);
     if (lastRun === today) return;
     lastRun = today;
@@ -138,7 +135,11 @@ async function checkEvents() {
     for (const e of events) {
         const d = daysUntil(e.date);
 
-        if (d < 0) continue; // 期限切れ → 削除
+        // 期限切れ → 完全削除
+        if (d < 0) {
+            console.log("🗑 expired removed:", e.date, e.message);
+            continue;
+        }
 
         if (d === 7 && !e.n7) {
             await channel.send(`📅【7日前】${e.date} - ${e.message}`);
@@ -155,7 +156,7 @@ async function checkEvents() {
             e.n0 = true;
         }
 
-        newEvents.push(e);
+        newEvents.push(e); // 生きているイベントだけ保存
     }
 
     await saveEvents(newEvents, sha);
@@ -208,7 +209,6 @@ client.on("interactionCreate", async interaction => {
 
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
-
             const sorted = sortEventsByDate(events);
 
             if (index < 0 || index >= sorted.length) {
@@ -242,4 +242,5 @@ client.login(TOKEN);
 
 // ===== HTTP =====
 http.createServer((req, res) => res.end("OK")).listen(process.env.PORT || 3000);
+
 
