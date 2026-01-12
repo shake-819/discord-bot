@@ -120,10 +120,11 @@ async function checkEvents() {
     const now = new Date();
     const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
 
-    // JSTの0時以外は何もしない
-    //if (jst.getUTCHours() !== 0) return;
+    const today =
+      jst.getFullYear() + "-" +
+      String(jst.getMonth() + 1).padStart(2, "0") + "-" +
+      String(jst.getDate()).padStart(2, "0");
 
-    const today = jst.toISOString().slice(0, 10);
     if (lastRun === today) return;
     lastRun = today;
 
@@ -135,11 +136,7 @@ async function checkEvents() {
     for (const e of events) {
         const d = daysUntil(e.date);
 
-        // 期限切れ → 完全削除
-        if (d < 0) {
-            console.log("🗑 expired removed:", e.date, e.message);
-            continue;
-        }
+        if (d < 0) continue;
 
         if (d === 7 && !e.n7) {
             await channel.send(`📅【7日前】${e.date} - ${e.message}`);
@@ -156,11 +153,12 @@ async function checkEvents() {
             e.n0 = true;
         }
 
-        newEvents.push(e); // 生きているイベントだけ保存
+        newEvents.push(e);
     }
 
     await saveEvents(newEvents, sha);
 }
+
 
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
