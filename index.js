@@ -116,7 +116,7 @@ function scheduleDaily() {
 }
 
 // ===== Scheduler =====
-let lastRunDay = null;
+let lastRunDay = "2026-01-12";
 
 function getJSTDateString() {
     const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
