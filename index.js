@@ -63,7 +63,7 @@ async function saveEvents(events, sha) {
     });
 }
 
-// ===== JST utils =====
+// ===== JST utils (FIXED) =====
 function getJSTToday() {
     const now = new Date();
     const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
@@ -71,12 +71,21 @@ function getJSTToday() {
     return jst;
 }
 
+function getJSTDateString() {
+    const now = new Date();
+    const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+    return (
+        jst.getFullYear() + "-" +
+        String(jst.getMonth() + 1).padStart(2, "0") + "-" +
+        String(jst.getDate()).padStart(2, "0")
+    );
+}
+
 function daysUntil(dateStr) {
     const today = getJSTToday();
     const target = new Date(dateStr + "T00:00:00");
     return Math.floor((target - today) / 86400000);
 }
-
 
 // ===== Slash Commands =====
 const commands = [
@@ -94,6 +103,10 @@ const commands = [
         .setName("deleteevent")
         .setDescription("イベント削除")
         .addIntegerOption(o => o.setName("index").setDescription("番号").setRequired(true)),
+
+    new SlashCommandBuilder()
+        .setName("runnow")
+        .setDescription("今すぐリマインダー処理を実行"),
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
@@ -107,35 +120,16 @@ client.once("ready", async () => {
         { body: commands }
     );
 
-    scheduleDaily();
+    setInterval(checkEvents, 60 * 1000); // 毎分日付チェック
 });
 
 // ===== Scheduler =====
-function scheduleDaily() {
-    setInterval(checkEvents, 60 * 1000); // 毎分 0:00判定
-}
-
-// ===== Scheduler =====
-let lastRunDay = "2026-01-12";
-
-function getJSTDateString() {
-    const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
-    return (
-        now.getUTCFullYear() + "-" +
-        String(now.getUTCMonth() + 1).padStart(2, "0") + "-" +
-        String(now.getUTCDate()).padStart(2, "0")
-    );
-}
-
-function scheduleDaily() {
-    setInterval(checkEvents, 60 * 1000); // 1分に1回チェック
-}
+let lastRunDay = null;
 
 // ===== JST 日付切り替え方式 =====
 async function checkEvents() {
     const today = getJSTDateString();
 
-    // 日付が変わった時だけ実行
     if (today === lastRunDay) return;
     lastRunDay = today;
 
@@ -176,7 +170,7 @@ async function checkEvents() {
     await saveEvents(newEvents, sha);
 }
 
-
+// ===== Commands =====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
@@ -187,6 +181,13 @@ client.on("interactionCreate", async interaction => {
 
         function sortEventsByDate(events) {
             return events.sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+
+        if (interaction.commandName === "runnow") {
+            lastRunDay = null;
+            await checkEvents();
+            await interaction.editReply("⏰ 今すぐ通知チェックを実行しました");
+            return;
         }
 
         if (interaction.commandName === "addevent") {
@@ -203,7 +204,6 @@ client.on("interactionCreate", async interaction => {
             });
 
             await saveEvents(events, sha);
-
             await interaction.editReply(`追加しました ✅\n📅 ${date} ${message}`);
             return;
         }
@@ -215,7 +215,6 @@ client.on("interactionCreate", async interaction => {
             }
 
             const sorted = sortEventsByDate(events);
-
             await interaction.editReply(
                 sorted.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
             );
@@ -236,7 +235,6 @@ client.on("interactionCreate", async interaction => {
             events.splice(realIndex, 1);
 
             await saveEvents(events, sha);
-
             await interaction.editReply(`削除しました 🗑\n📅 ${removed.date} ${removed.message}`);
             return;
         }
@@ -245,9 +243,7 @@ client.on("interactionCreate", async interaction => {
 
     } catch (err) {
         console.error("interaction error:", err);
-        if (interaction.deferred || interaction.replied) {
-            try { await interaction.editReply("⚠ エラーが発生しました"); } catch {}
-        }
+        try { await interaction.editReply("⚠ エラーが発生しました"); } catch {}
     }
 });
 
@@ -255,7 +251,9 @@ client.on("interactionCreate", async interaction => {
 console.log("Trying Discord login...");
 client.login(TOKEN);
 
-// ===== HTTP =====
-http.createServer((req, res) => res.end("OK")).listen(process.env.PORT || 3000);
+// ===== HTTP keep alive =====
+http.createServer((req, res) => res.end("OK"))
+    .listen(process.env.PORT || 3000);
+
 
 
