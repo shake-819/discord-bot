@@ -113,8 +113,8 @@ function scheduleDaily() {
     setInterval(checkEvents, 60 * 1000); // 毎分 0:00判定
 }
 
-let lastRun = "1900-01-01";
-
+// ===== Scheduler =====
+let lastRunDay = null;
 
 function getJSTDateString() {
     const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -125,10 +125,15 @@ function getJSTDateString() {
     );
 }
 
+function scheduleDaily() {
+    setInterval(checkEvents, 60 * 1000); // 1分に1回チェック
+}
+
+// ===== JST 日付切り替え方式 =====
 async function checkEvents() {
     const today = getJSTDateString();
 
-    // 日付が変わった瞬間だけ発火
+    // 日付が変わった時だけ実行
     if (today === lastRunDay) return;
     lastRunDay = today;
 
@@ -142,8 +147,9 @@ async function checkEvents() {
     for (const e of events) {
         const d = daysUntil(e.date);
 
+        // 期限切れ → 完全削除
         if (d < 0) {
-            console.log("🗑 expired:", e.date, e.message);
+            console.log("🗑 expired removed:", e.date, e.message);
             continue;
         }
 
