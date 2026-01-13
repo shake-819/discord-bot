@@ -185,10 +185,15 @@ async function checkEvents() {
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // ★ここが最重要：最初の1行でACK
-    interaction.deferReply({ ephemeral: true }).catch(() => {});
+    // interactionの寿命に依存しない安全ACK
+    try {
+        await interaction.reply({ content: "⏳ 実行中...", flags: 64 });
+    } catch {
+        // 既に失効していても無視
+    }
 
     try {
+
         let { events, sha } = await loadEvents();
 
         function sortEventsByDate(events) {
@@ -199,12 +204,18 @@ client.on("interactionCreate", async interaction => {
             lastRunDay = null;
 
             checkEvents()
-                .then(() => console.log("manual run complete"))
-                .catch(err => console.error("runnow error", err));
+                .then(async () => {
+                    const channel = await client.channels.fetch(CHANNEL_ID);
+                    channel.send("✅ /runnow による通知チェックが完了しました");
+                })
+                .catch(async e => {
+                     const channel = await client.channels.fetch(CHANNEL_ID);
+                     channel.send("❌ /runnow エラー: " + e.message);
+                });
 
-            await interaction.editReply("⏰ 今すぐ通知チェックを開始しました");
-            return;
+           return;
         }
+
 
         if (interaction.commandName === "addevent") {
             const date = interaction.options.getString("date");
