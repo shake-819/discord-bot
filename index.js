@@ -113,7 +113,7 @@ function scheduleDaily() {
     setInterval(checkEvents, 60 * 1000); // 毎分 0:00判定
 }
 
-let lastRun = null;
+let lastRun = "1900-01-01";
 
 // ===== JST 0時 ＆ 期限切れ削除 修正版 =====
 async function checkEvents() {
