@@ -41,7 +41,6 @@ async function loadEvents() {
     const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`, {
         headers: ghHeaders
     });
-
     if (res.status === 404) return { events: [], sha: null };
 
     const data = await res.json();
@@ -63,7 +62,7 @@ async function saveEvents(events, sha) {
     });
 }
 
-// ===== JST utils (FIXED) =====
+// ===== JST utils (safe) =====
 function getJSTToday() {
     const now = new Date();
     const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
@@ -82,28 +81,22 @@ function getJSTDateString() {
 }
 
 function daysUntil(dateStr) {
-    // "2026-1-3" も "2026-01-03" もOK
     const m = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
     if (!m) return NaN;
-
     const y = Number(m[1]);
     const mo = Number(m[2]) - 1;
     const d = Number(m[3]);
-
-    // JSTの0:00として日付を作る
     const target = new Date(y, mo, d);
     const today = getJSTToday();
-
     return Math.floor((target - today) / 86400000);
 }
-
 
 // ===== Slash Commands =====
 const commands = [
     new SlashCommandBuilder()
         .setName("addevent")
         .setDescription("イベント追加")
-        .addStringOption(o => o.setName("date").setDescription("YYYY-MM-DD").setRequired(true))
+        .addStringOption(o => o.setName("date").setDescription("YYYY-MM-DD or YYYY-M-D").setRequired(true))
         .addStringOption(o => o.setName("message").setDescription("内容").setRequired(true)),
 
     new SlashCommandBuilder()
@@ -125,56 +118,52 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 // ===== READY =====
 client.once("ready", async () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
-
     await rest.put(
         Routes.applicationGuildCommands(client.user.id, GUILD_ID),
         { body: commands }
     );
-
-    setInterval(checkEvents, 60 * 1000); // 毎分日付チェック
+    setInterval(checkEvents, 60 * 1000);
 });
 
 // ===== Scheduler =====
 let lastRunDay = null;
 
-// ===== JST 日付切り替え方式 =====
+// ===== Core =====
 async function checkEvents() {
     const today = getJSTDateString();
-
     if (today === lastRunDay) return;
     lastRunDay = today;
 
     console.log("⏰ Daily check:", today);
 
     const { events, sha } = await loadEvents();
-    const channel = await client.channels.fetch(CHANNEL_ID);
+
+    let channel;
+    try {
+        channel = await client.channels.fetch(CHANNEL_ID);
+    } catch (e) {
+        console.error("Channel fetch failed:", e);
+        return;
+    }
 
     const newEvents = [];
 
     for (const e of events) {
         const d = daysUntil(e.date);
-
-        // 期限切れ → 完全削除
-        if (d < 0) {
-            console.log("🗑 expired removed:", e.date, e.message);
-            continue;
-        }
+        if (d < 0) continue;
 
         if (d === 7 && !e.n7) {
-            await channel.send(`📅【7日前】${e.date} - ${e.message}`);
+            try { await channel.send(`📅【7日前】${e.date} - ${e.message}`); } catch {}
             e.n7 = true;
         }
-
         if (d === 3 && !e.n3) {
-            await channel.send(`📅【3日前】${e.date} - ${e.message}`);
+            try { await channel.send(`📅【3日前】${e.date} - ${e.message}`); } catch {}
             e.n3 = true;
         }
-
         if (d === 0 && !e.n0) {
-            await channel.send(`📅【今日】${e.date} - ${e.message}`);
+            try { await channel.send(`📅【今日】${e.date} - ${e.message}`); } catch {}
             e.n0 = true;
         }
-
         newEvents.push(e);
     }
 
@@ -185,37 +174,31 @@ async function checkEvents() {
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // interactionの寿命に依存しない安全ACK
+    // interaction寿命に依存しないACK
     try {
         await interaction.reply({ content: "⏳ 実行中...", flags: 64 });
-    } catch {
-        // 既に失効していても無視
-    }
+    } catch {}
 
     try {
-
         let { events, sha } = await loadEvents();
 
         function sortEventsByDate(events) {
-            return events.sort((a, b) => new Date(a.date) - new Date(b.date));
+            return events.sort((a, b) => daysUntil(a.date) - daysUntil(b.date));
         }
 
         if (interaction.commandName === "runnow") {
             lastRunDay = null;
-
             checkEvents()
                 .then(async () => {
-                    const channel = await client.channels.fetch(CHANNEL_ID);
-                    channel.send("✅ /runnow による通知チェックが完了しました");
+                    const ch = await client.channels.fetch(CHANNEL_ID);
+                    ch.send("✅ /runnow による通知チェックが完了しました");
                 })
                 .catch(async e => {
-                     const channel = await client.channels.fetch(CHANNEL_ID);
-                     channel.send("❌ /runnow エラー: " + e.message);
+                    const ch = await client.channels.fetch(CHANNEL_ID);
+                    ch.send("❌ /runnow エラー: " + e.message);
                 });
-
-           return;
+            return;
         }
-
 
         if (interaction.commandName === "addevent") {
             const date = interaction.options.getString("date");
@@ -229,48 +212,33 @@ client.on("interactionCreate", async interaction => {
                 n3: false,
                 n0: false
             });
-
             await saveEvents(events, sha);
-            await interaction.editReply(`追加しました ✅\n📅 ${date} ${message}`);
-            return;
+            return interaction.followUp({ content: `追加しました ✅\n📅 ${date} ${message}`, flags: 64 });
         }
 
         if (interaction.commandName === "listevents") {
-            if (!events.length) {
-                await interaction.editReply("イベントはありません");
-                return;
-            }
-
+            if (!events.length) return interaction.followUp({ content: "イベントはありません", flags: 64 });
             const sorted = sortEventsByDate(events);
-            await interaction.editReply(
-                sorted.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
-            );
-            return;
+            return interaction.followUp({
+                content: sorted.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n"),
+                flags: 64
+            });
         }
 
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
             const sorted = sortEventsByDate(events);
-
             if (index < 0 || index >= sorted.length) {
-                await interaction.editReply("無効な番号です");
-                return;
+                return interaction.followUp({ content: "無効な番号です", flags: 64 });
             }
-
             const removed = sorted[index];
-            const realIndex = events.findIndex(e => e.id === removed.id);
-            events.splice(realIndex, 1);
-
+            events = events.filter(e => e.id !== removed.id);
             await saveEvents(events, sha);
-            await interaction.editReply(`削除しました 🗑\n📅 ${removed.date} ${removed.message}`);
-            return;
+            return interaction.followUp({ content: `削除しました 🗑\n📅 ${removed.date} ${removed.message}`, flags: 64 });
         }
-
-        await interaction.editReply("不明なコマンドです");
 
     } catch (err) {
         console.error("interaction error:", err);
-        try { await interaction.editReply("⚠ エラーが発生しました"); } catch {}
     }
 });
 
@@ -281,6 +249,7 @@ client.login(TOKEN);
 // ===== HTTP keep alive =====
 http.createServer((req, res) => res.end("OK"))
     .listen(process.env.PORT || 3000);
+
 
 
 
