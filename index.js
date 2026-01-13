@@ -173,9 +173,9 @@ async function checkEvents() {
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // 1. まず必ず ACK を保証
-    if (!interaction.replied && !interaction.deferred) {
-        await interaction.deferReply({ ephemeral: true });
+    // ===== ① まず必ずACK（3秒制限回避） =====
+    if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ flags: 64 }); // 64 = ephemeral
     }
 
     try {
@@ -185,12 +185,14 @@ client.on("interactionCreate", async interaction => {
             return events.sort((a, b) => daysUntil(a.date) - daysUntil(b.date));
         }
 
+        // ===== runnow =====
         if (interaction.commandName === "runnow") {
             lastRunDay = null;
             await checkEvents();
             return interaction.editReply("✅ /runnow による通知チェックが完了しました");
         }
 
+        // ===== addevent =====
         if (interaction.commandName === "addevent") {
             const date = interaction.options.getString("date");
             const message = interaction.options.getString("message");
@@ -205,11 +207,15 @@ client.on("interactionCreate", async interaction => {
             });
 
             await saveEvents(events, sha);
+
             return interaction.editReply(`追加しました ✅\n📅 ${date} ${message}`);
         }
 
+        // ===== listevents =====
         if (interaction.commandName === "listevents") {
-            if (!events.length) return interaction.editReply("イベントはありません");
+            if (!events.length) {
+                return interaction.editReply("イベントはありません");
+            }
 
             const sorted = sortEventsByDate(events);
             return interaction.editReply(
@@ -217,6 +223,7 @@ client.on("interactionCreate", async interaction => {
             );
         }
 
+        // ===== deleteevent =====
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
             const sorted = sortEventsByDate(events);
@@ -229,14 +236,17 @@ client.on("interactionCreate", async interaction => {
             events = events.filter(e => e.id !== removed.id);
 
             await saveEvents(events, sha);
+
             return interaction.editReply(`削除しました 🗑\n📅 ${removed.date} ${removed.message}`);
         }
 
     } catch (err) {
         console.error("interaction error:", err);
-        if (interaction.deferred || interaction.replied) {
+
+        // ACK済みなので editReply で安全にエラー返せる
+        try {
             await interaction.editReply("❌ エラーが発生しました");
-        }
+        } catch {}
     }
 });
 
