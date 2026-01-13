@@ -184,11 +184,11 @@ async function checkEvents() {
 // ===== Commands =====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
-    interaction.deferReply().catch(() => {});
+
+    // ★ここが最重要：最初の1行でACK
+    interaction.deferReply({ ephemeral: true }).catch(() => {});
 
     try {
-        await interaction.deferReply();
-
         let { events, sha } = await loadEvents();
 
         function sortEventsByDate(events) {
@@ -198,15 +198,13 @@ client.on("interactionCreate", async interaction => {
         if (interaction.commandName === "runnow") {
             lastRunDay = null;
 
-    // Slash応答とは切り離して実行
             checkEvents()
                 .then(() => console.log("manual run complete"))
-                .catch(e => console.error("runnow error", e));
+                .catch(err => console.error("runnow error", err));
 
             await interaction.editReply("⏰ 今すぐ通知チェックを開始しました");
             return;
         }
-
 
         if (interaction.commandName === "addevent") {
             const date = interaction.options.getString("date");
