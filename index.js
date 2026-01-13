@@ -175,7 +175,7 @@ client.on("interactionCreate", async interaction => {
 
     // ===== ① まず必ずACK（3秒制限回避） =====
     if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply({ flags: 64 }); // 64 = ephemeral
+        await interaction.deferReply(); // 64 = ephemeral
     }
 
     try {
