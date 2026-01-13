@@ -170,14 +170,13 @@ async function checkEvents() {
     await saveEvents(newEvents, sha);
 }
 
-// ===== Commands =====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // interaction寿命に依存しないACK
-    try {
-        await interaction.reply({ content: "⏳ 実行中...", flags: 64 });
-    } catch {}
+    // 1. まず必ず ACK を保証
+    if (!interaction.replied && !interaction.deferred) {
+        await interaction.deferReply({ ephemeral: true });
+    }
 
     try {
         let { events, sha } = await loadEvents();
@@ -188,16 +187,8 @@ client.on("interactionCreate", async interaction => {
 
         if (interaction.commandName === "runnow") {
             lastRunDay = null;
-            checkEvents()
-                .then(async () => {
-                    const ch = await client.channels.fetch(CHANNEL_ID);
-                    ch.send("✅ /runnow による通知チェックが完了しました");
-                })
-                .catch(async e => {
-                    const ch = await client.channels.fetch(CHANNEL_ID);
-                    ch.send("❌ /runnow エラー: " + e.message);
-                });
-            return;
+            await checkEvents();
+            return interaction.editReply("✅ /runnow による通知チェックが完了しました");
         }
 
         if (interaction.commandName === "addevent") {
@@ -212,35 +203,43 @@ client.on("interactionCreate", async interaction => {
                 n3: false,
                 n0: false
             });
+
             await saveEvents(events, sha);
-            return interaction.followUp({ content: `追加しました ✅\n📅 ${date} ${message}`, flags: 64 });
+            return interaction.editReply(`追加しました ✅\n📅 ${date} ${message}`);
         }
 
         if (interaction.commandName === "listevents") {
-            if (!events.length) return interaction.followUp({ content: "イベントはありません", flags: 64 });
+            if (!events.length) return interaction.editReply("イベントはありません");
+
             const sorted = sortEventsByDate(events);
-            return interaction.followUp({
-                content: sorted.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n"),
-                flags: 64
-            });
+            return interaction.editReply(
+                sorted.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
+            );
         }
 
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
             const sorted = sortEventsByDate(events);
+
             if (index < 0 || index >= sorted.length) {
-                return interaction.followUp({ content: "無効な番号です", flags: 64 });
+                return interaction.editReply("無効な番号です");
             }
+
             const removed = sorted[index];
             events = events.filter(e => e.id !== removed.id);
+
             await saveEvents(events, sha);
-            return interaction.followUp({ content: `削除しました 🗑\n📅 ${removed.date} ${removed.message}`, flags: 64 });
+            return interaction.editReply(`削除しました 🗑\n📅 ${removed.date} ${removed.message}`);
         }
 
     } catch (err) {
         console.error("interaction error:", err);
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply("❌ エラーが発生しました");
+        }
     }
 });
+
 
 // ===== Start =====
 console.log("Trying Discord login...");
