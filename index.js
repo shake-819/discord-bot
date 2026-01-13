@@ -82,10 +82,21 @@ function getJSTDateString() {
 }
 
 function daysUntil(dateStr) {
+    // "2026-1-3" も "2026-01-03" もOK
+    const m = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!m) return NaN;
+
+    const y = Number(m[1]);
+    const mo = Number(m[2]) - 1;
+    const d = Number(m[3]);
+
+    // JSTの0:00として日付を作る
+    const target = new Date(y, mo, d);
     const today = getJSTToday();
-    const target = new Date(dateStr + "T00:00:00");
+
     return Math.floor((target - today) / 86400000);
 }
+
 
 // ===== Slash Commands =====
 const commands = [
