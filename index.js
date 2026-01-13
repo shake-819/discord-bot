@@ -197,10 +197,16 @@ client.on("interactionCreate", async interaction => {
 
         if (interaction.commandName === "runnow") {
             lastRunDay = null;
-            await checkEvents();
-            await interaction.editReply("⏰ 今すぐ通知チェックを実行しました");
+
+    // Slash応答とは切り離して実行
+            checkEvents()
+                .then(() => console.log("manual run complete"))
+                .catch(e => console.error("runnow error", e));
+
+            await interaction.editReply("⏰ 今すぐ通知チェックを開始しました");
             return;
         }
+
 
         if (interaction.commandName === "addevent") {
             const date = interaction.options.getString("date");
