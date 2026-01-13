@@ -4,7 +4,7 @@
     "date": "2026-1-17",
     "message": "実用英語検定1次",
     "n7": false,
-    "n3": false,
+    "n3": true,
     "n0": false
   },
   {
@@ -160,19 +160,11 @@
     "n0": false
   },
   {
-    "id": "0625d106cb966c79",
-    "date": "2026-1-13",
-    "message": "テスト",
-    "n7": false,
-    "n3": false,
-    "n0": true
-  },
-  {
     "id": "7359d5791c9f19c8",
     "date": "2026-1-14",
     "message": "テスト",
     "n7": false,
     "n3": false,
-    "n0": false
+    "n0": true
   }
 ]
