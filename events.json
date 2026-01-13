@@ -1,13 +1,5 @@
 [
   {
-    "id": "4a28a9354f103b76",
-    "date": "2026-1-12",
-    "message": "テスト",
-    "n7": false,
-    "n3": false,
-    "n0": false
-  },
-  {
     "id": "14d1d905730bf599",
     "date": "2026-1-17",
     "message": "実用英語検定1次",
@@ -173,6 +165,6 @@
     "message": "テスト",
     "n7": false,
     "n3": false,
-    "n0": false
+    "n0": true
   }
 ]
