@@ -115,18 +115,24 @@ function scheduleDaily() {
 
 let lastRun = "1900-01-01";
 
-// ===== JST 0時 ＆ 期限切れ削除 修正版 =====
+
+function getJSTDateString() {
+    const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    return (
+        now.getUTCFullYear() + "-" +
+        String(now.getUTCMonth() + 1).padStart(2, "0") + "-" +
+        String(now.getUTCDate()).padStart(2, "0")
+    );
+}
+
 async function checkEvents() {
-    const now = new Date();
-    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const today = getJSTDateString();
 
-    const today =
-      jst.getFullYear() + "-" +
-      String(jst.getMonth() + 1).padStart(2, "0") + "-" +
-      String(jst.getDate()).padStart(2, "0");
+    // 日付が変わった瞬間だけ発火
+    if (today === lastRunDay) return;
+    lastRunDay = today;
 
-    if (lastRun === today) return;
-    lastRun = today;
+    console.log("⏰ Daily check:", today);
 
     const { events, sha } = await loadEvents();
     const channel = await client.channels.fetch(CHANNEL_ID);
@@ -136,7 +142,10 @@ async function checkEvents() {
     for (const e of events) {
         const d = daysUntil(e.date);
 
-        if (d < 0) continue;
+        if (d < 0) {
+            console.log("🗑 expired:", e.date, e.message);
+            continue;
+        }
 
         if (d === 7 && !e.n7) {
             await channel.send(`📅【7日前】${e.date} - ${e.message}`);
