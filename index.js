@@ -65,16 +65,18 @@ async function saveEvents(events, sha) {
 
 // ===== JST utils =====
 function getJSTToday() {
-    const d = new Date(Date.now() + 9 * 3600000);
-    d.setUTCHours(0, 0, 0, 0);
-    return d;
+    const now = new Date();
+    const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+    jst.setHours(0, 0, 0, 0);
+    return jst;
 }
 
 function daysUntil(dateStr) {
     const today = getJSTToday();
-    const target = new Date(dateStr + "T00:00:00+09:00");
+    const target = new Date(dateStr + "T00:00:00");
     return Math.floor((target - today) / 86400000);
 }
+
 
 // ===== Slash Commands =====
 const commands = [
