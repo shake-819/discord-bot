@@ -184,6 +184,7 @@ async function checkEvents() {
 // ===== Commands =====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
+    interaction.deferReply().catch(() => {});
 
     try {
         await interaction.deferReply();
