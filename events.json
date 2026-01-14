@@ -12,14 +12,14 @@
     "date": "2026-1-18",
     "message": "全商情報処理検定 <@&1445984839370149968> <@&1446013552619159623>",
     "n7": false,
-    "n3": false,
+    "n3": true,
     "n0": false
   },
   {
     "id": "c4f01ff568be87d0",
     "date": "2026-1-22",
     "message": "私立Ⅰ期入試 @everyone",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n0": false
   },
@@ -158,13 +158,5 @@
     "n7": false,
     "n3": false,
     "n0": false
-  },
-  {
-    "id": "7359d5791c9f19c8",
-    "date": "2026-1-14",
-    "message": "テスト",
-    "n7": false,
-    "n3": false,
-    "n0": true
   }
 ]
