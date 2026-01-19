@@ -38,9 +38,10 @@ const ghHeaders = {
 };
 
 async function loadEvents() {
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`, {
-        headers: ghHeaders
-    });
+    const res = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`,
+        { headers: ghHeaders }
+    );
     if (res.status === 404) return { events: [], sha: null };
 
     const data = await res.json();
@@ -55,14 +56,17 @@ async function saveEvents(events, sha) {
         sha
     };
 
-    await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`, {
-        method: "PUT",
-        headers: { ...ghHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    });
+    await fetch(
+        `https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`,
+        {
+            method: "PUT",
+            headers: { ...ghHeaders, "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        }
+    );
 }
 
-// ===== JST utils (safe) =====
+// ===== JST utils =====
 function getJSTToday() {
     const now = new Date();
     const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
@@ -96,7 +100,7 @@ const commands = [
     new SlashCommandBuilder()
         .setName("addevent")
         .setDescription("イベント追加")
-        .addStringOption(o => o.setName("date").setDescription("YYYY-MM-DD or YYYY-M-D").setRequired(true))
+        .addStringOption(o => o.setName("date").setDescription("YYYY-MM-DD").setRequired(true))
         .addStringOption(o => o.setName("message").setDescription("内容").setRequired(true)),
 
     new SlashCommandBuilder()
@@ -115,18 +119,30 @@ const commands = [
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-// ===== READY =====
-client.once("ready", async () => {
-    console.log(`✅ Logged in as ${client.user.tag}`);
-    await rest.put(
-        Routes.applicationGuildCommands(client.user.id, GUILD_ID),
-        { body: commands }
-    );
-    setInterval(checkEvents, 60 * 1000);
-});
-
-// ===== Scheduler =====
+// ===== Scheduler (JST 00:00 固定) =====
 let lastRunDay = null;
+
+function msUntilNextJSTMidnight() {
+    const now = new Date();
+    const jstNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+
+    const next = new Date(jstNow);
+    next.setDate(next.getDate() + 1);
+    next.setHours(0, 0, 0, 0);
+
+    return next - jstNow;
+}
+
+async function scheduleDailyCheck() {
+    const wait = msUntilNextJSTMidnight();
+    console.log(`⏳ Next check in ${(wait / 1000 / 60).toFixed(2)} minutes`);
+
+    setTimeout(async () => {
+        lastRunDay = null;
+        await checkEvents();
+        scheduleDailyCheck();
+    }, wait);
+}
 
 // ===== Core =====
 async function checkEvents() {
@@ -146,8 +162,6 @@ async function checkEvents() {
         return;
     }
 
-    const newEvents = [];
-
     for (const e of events) {
         const d = daysUntil(e.date);
         if (d < 0) continue;
@@ -164,35 +178,44 @@ async function checkEvents() {
             try { await channel.send(`📅【今日】${e.date} - ${e.message}`); } catch {}
             e.n0 = true;
         }
-        newEvents.push(e);
     }
 
-    await saveEvents(newEvents, sha);
+    await saveEvents(events, sha);
 }
 
+// ===== READY =====
+client.once("ready", async () => {
+    console.log(`✅ Logged in as ${client.user.tag}`);
+
+    await rest.put(
+        Routes.applicationGuildCommands(client.user.id, GUILD_ID),
+        { body: commands }
+    );
+
+    // JST 00:00 固定スケジューラ開始
+    scheduleDailyCheck();
+});
+
+// ===== Interactions =====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // ===== ① まず必ずACK（3秒制限回避） =====
     if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply(); // 64 = ephemeral
+        await interaction.deferReply();
     }
 
     try {
         let { events, sha } = await loadEvents();
 
-        function sortEventsByDate(events) {
-            return events.sort((a, b) => daysUntil(a.date) - daysUntil(b.date));
-        }
+        const sortEventsByDate = ev =>
+            ev.sort((a, b) => daysUntil(a.date) - daysUntil(b.date));
 
-        // ===== runnow =====
         if (interaction.commandName === "runnow") {
             lastRunDay = null;
             await checkEvents();
-            return interaction.editReply("✅ /runnow による通知チェックが完了しました");
+            return interaction.editReply("✅ /runnow 実行完了");
         }
 
-        // ===== addevent =====
         if (interaction.commandName === "addevent") {
             const date = interaction.options.getString("date");
             const message = interaction.options.getString("message");
@@ -207,23 +230,19 @@ client.on("interactionCreate", async interaction => {
             });
 
             await saveEvents(events, sha);
-
             return interaction.editReply(`追加しました ✅\n📅 ${date} ${message}`);
         }
 
-        // ===== listevents =====
         if (interaction.commandName === "listevents") {
             if (!events.length) {
                 return interaction.editReply("イベントはありません");
             }
-
             const sorted = sortEventsByDate(events);
             return interaction.editReply(
                 sorted.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
             );
         }
 
-        // ===== deleteevent =====
         if (interaction.commandName === "deleteevent") {
             const index = interaction.options.getInteger("index") - 1;
             const sorted = sortEventsByDate(events);
@@ -236,20 +255,16 @@ client.on("interactionCreate", async interaction => {
             events = events.filter(e => e.id !== removed.id);
 
             await saveEvents(events, sha);
-
             return interaction.editReply(`削除しました 🗑\n📅 ${removed.date} ${removed.message}`);
         }
 
     } catch (err) {
         console.error("interaction error:", err);
-
-        // ACK済みなので editReply で安全にエラー返せる
         try {
             await interaction.editReply("❌ エラーが発生しました");
         } catch {}
     }
 });
-
 
 // ===== Start =====
 console.log("Trying Discord login...");
@@ -258,7 +273,3 @@ client.login(TOKEN);
 // ===== HTTP keep alive =====
 http.createServer((req, res) => res.end("OK"))
     .listen(process.env.PORT || 3000);
-
-
-
-
