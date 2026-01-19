@@ -201,8 +201,15 @@ client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply();
+        try {
+            await interaction.deferReply();
+        } catch (e) {
+        // Interaction が既に無効（10062）の場合は無視
+            if (e.code !== 10062) throw e;
+            return;
+        }
     }
+
 
     try {
         let { events, sha } = await loadEvents();
