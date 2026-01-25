@@ -1,21 +1,5 @@
 [
   {
-    "id": "c4f01ff568be87d0",
-    "date": "2026-1-22",
-    "message": "私立Ⅰ期入試 @everyone",
-    "n7": true,
-    "n3": true,
-    "n0": true
-  },
-  {
-    "id": "47dd511c30dce566",
-    "date": "2026-1-25",
-    "message": "全商簿記検定 <@&1446268030664445981>",
-    "n7": true,
-    "n3": true,
-    "n0": true
-  },
-  {
     "id": "afc0016713faf8f4",
     "date": "2026-1-27",
     "message": "保護者進学説明会 <@&1410232748165173388>",
@@ -28,7 +12,7 @@
     "date": "2026-1-29",
     "message": "進路実現報告会 @everyone",
     "n7": true,
-    "n3": false,
+    "n3": true,
     "n0": false
   },
   {
