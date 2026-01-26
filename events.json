@@ -5,7 +5,7 @@
     "message": "保護者進学説明会 <@&1410232748165173388>",
     "n7": true,
     "n3": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "0299511ca33c78ef",
@@ -20,7 +20,7 @@
     "date": "2026-1-30",
     "message": "課題研究発表会 @everyone",
     "n7": true,
-    "n3": false,
+    "n3": true,
     "n0": false
   },
   {
@@ -123,7 +123,7 @@
     "id": "77a2a70b3cba6352",
     "date": "2026-2-3",
     "message": "特別入学者選抜による休校日(2月11日まで) @everyone",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n0": false
   }
