@@ -173,14 +173,25 @@ client.on("interactionCreate", async interaction => {
     }
 
     if (interaction.commandName === "addevent") {
-        events.push({
+        const newEvent = {
             id: crypto.randomBytes(8).toString("hex"),
             date: interaction.options.getString("date"),
             message: interaction.options.getString("message"),
-            n7: false, n3: false, n0: false,
-        });
+            n7: false,
+            n3: false,
+            n0: false,
+        };
+
+        events.push(newEvent);
+
+        // ✅ 日付で自動ソート（昇順）
+        events.sort((a, b) => a.date.localeCompare(b.date));
+
         await saveEvents(events, sha);
-        return interaction.editReply("✅ 追加しました");
+
+        return interaction.editReply(
+            `✅ 追加しました\n📅 ${newEvent.date} - ${newEvent.message}`
+        );
     }
 
     if (interaction.commandName === "listevents") {
@@ -202,4 +213,5 @@ client.on("interactionCreate", async interaction => {
 // ===== Start =====
 client.login(TOKEN);
 http.createServer((_, res) => res.end("OK")).listen(process.env.PORT || 3000);
+
 
