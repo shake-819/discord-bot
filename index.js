@@ -37,6 +37,14 @@ const ghHeaders = {
     Accept: "application/vnd.github+json",
 };
 
+// ===== 日付正規化 =====
+function normalizeDate(dateStr) {
+    if (!dateStr) return null;
+    const [y, m, d] = dateStr.trim().split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 // ===== GitHub JSON =====
 async function loadEvents() {
     const res = await fetch(
@@ -46,7 +54,14 @@ async function loadEvents() {
     if (res.status === 404) return { events: [], sha: null };
     const data = await res.json();
     const json = Buffer.from(data.content, "base64").toString();
-    return { events: JSON.parse(json), sha: data.sha };
+    let events = JSON.parse(json);
+
+    // ✅ 既存 events.json を一度だけ浄化
+    events = events
+        .map(e => ({ ...e, date: normalizeDate(e.date) || e.date }))
+        .filter(e => e.date);
+
+    return { events, sha: data.sha };
 }
 
 async function saveEvents(events, sha) {
@@ -102,8 +117,6 @@ async function checkEvents() {
 
     for (const e of events) {
         const d = daysUntil(e.date);
-
-        // ✅ 過去イベントは自動削除
         if (d < 0) continue;
 
         if (d === 7 && !e.n7) {
@@ -165,9 +178,7 @@ client.on("interactionCreate", async interaction => {
 
     try {
         await interaction.deferReply();
-    } catch (e) {
-        console.warn("⚠️ deferReply failed (expired interaction)");
-    }
+    } catch {}
 
     let { events, sha } = await loadEvents();
 
@@ -178,9 +189,17 @@ client.on("interactionCreate", async interaction => {
     }
 
     if (interaction.commandName === "addevent") {
+        const rawDate = interaction.options.getString("date");
+        const date = normalizeDate(rawDate);
+        if (!date) {
+            return interaction.editReply?.(
+                "❌ 日付形式が不正です（例: 2026-1-5 / 2026-01-05）"
+            ).catch(() => {});
+        }
+
         const newEvent = {
             id: crypto.randomBytes(8).toString("hex"),
-            date: interaction.options.getString("date"),
+            date,
             message: interaction.options.getString("message"),
             n7: false,
             n3: false,
@@ -197,14 +216,14 @@ client.on("interactionCreate", async interaction => {
     }
 
     if (interaction.commandName === "listevents") {
-        if (!events.length) return interaction.editReply("イベントなし");
+        if (!events.length)
+            return interaction.editReply?.("イベントなし").catch(() => {});
 
-        // ✅ 表示前に日付ソート
         events.sort((a, b) => a.date.localeCompare(b.date));
 
-        return interaction.editReply(
-        events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
-        );
+        return interaction.editReply?.(
+            events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
+        ).catch(() => {});
     }
 
     if (interaction.commandName === "deleteevent") {
@@ -222,5 +241,6 @@ client.on("interactionCreate", async interaction => {
 // ===== Start =====
 client.login(TOKEN);
 http.createServer((_, res) => res.end("OK")).listen(process.env.PORT || 3000);
+
 
 
