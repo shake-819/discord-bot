@@ -162,14 +162,19 @@ client.once("ready", async () => {
 // ===== Interactions =====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
-    await interaction.deferReply();
+
+    try {
+        await interaction.deferReply();
+    } catch (e) {
+        console.warn("⚠️ deferReply failed (expired interaction)");
+    }
 
     let { events, sha } = await loadEvents();
 
     if (interaction.commandName === "runnow") {
         lastRunDay = null;
         await checkEvents();
-        return interaction.editReply("✅ 実行完了");
+        return interaction.editReply?.("✅ 実行完了").catch(() => {});
     }
 
     if (interaction.commandName === "addevent") {
@@ -183,30 +188,34 @@ client.on("interactionCreate", async interaction => {
         };
 
         events.push(newEvent);
-
-        // ✅ 日付で自動ソート（昇順）
         events.sort((a, b) => a.date.localeCompare(b.date));
-
         await saveEvents(events, sha);
 
-        return interaction.editReply(
+        return interaction.editReply?.(
             `✅ 追加しました\n📅 ${newEvent.date} - ${newEvent.message}`
-        );
+        ).catch(() => {});
     }
 
     if (interaction.commandName === "listevents") {
         if (!events.length) return interaction.editReply("イベントなし");
+
+        // ✅ 表示前に日付ソート
+        events.sort((a, b) => a.date.localeCompare(b.date));
+
         return interaction.editReply(
-            events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
+        events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
         );
     }
 
     if (interaction.commandName === "deleteevent") {
         const index = interaction.options.getInteger("index") - 1;
-        if (!events[index]) return interaction.editReply("無効な番号");
+        if (!events[index])
+            return interaction.editReply?.("無効な番号").catch(() => {});
         const removed = events.splice(index, 1)[0];
         await saveEvents(events, sha);
-        return interaction.editReply(`🗑 削除：${removed.date} ${removed.message}`);
+        return interaction.editReply?.(
+            `🗑 削除：${removed.date} ${removed.message}`
+        ).catch(() => {});
     }
 });
 
