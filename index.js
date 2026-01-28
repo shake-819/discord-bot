@@ -207,7 +207,12 @@ client.on("interactionCreate", async interaction => {
         };
 
         events.push(newEvent);
-        events.sort((a, b) => a.date.localeCompare(b.date));
+        events.sort((a, b) => {
+            const [ay, am, ad] = a.date.split("-").map(Number);
+            const [by, bm, bd] = b.date.split("-").map(Number);
+            return Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd);
+        });
+
         await saveEvents(events, sha);
 
         return interaction.editReply?.(
@@ -219,7 +224,11 @@ client.on("interactionCreate", async interaction => {
         if (!events.length)
             return interaction.editReply?.("イベントなし").catch(() => {});
 
-        events.sort((a, b) => a.date.localeCompare(b.date));
+        events.sort((a, b) => {
+            const [ay, am, ad] = a.date.split("-").map(Number);
+            const [by, bm, bd] = b.date.split("-").map(Number);
+            return Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd);
+        });
 
         return interaction.editReply?.(
             events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
