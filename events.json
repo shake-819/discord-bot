@@ -1,19 +1,11 @@
 [
   {
-    "id": "0299511ca33c78ef",
-    "date": "2026-01-29",
-    "message": "進路実現報告会 @everyone",
-    "n7": true,
-    "n3": true,
-    "n0": true
-  },
-  {
     "id": "4c89de22a2e06b71",
     "date": "2026-01-30",
     "message": "課題研究発表会 @everyone",
     "n7": true,
     "n3": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "a2da33c72e3204aa",
@@ -36,7 +28,7 @@
     "date": "2026-02-02",
     "message": "全商あっち向いてホイ選手権大会in2-2 @everyone",
     "n7": false,
-    "n3": false,
+    "n3": true,
     "n0": false
   },
   {
