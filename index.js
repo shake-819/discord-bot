@@ -140,11 +140,11 @@ async function checkEvents() {
 
 // ===== JST 0:00 安定スケジューラ =====
 setInterval(() => {
-    const now = getJSTNow();
-    if (now.getUTCHours() === 0 && now.getUTCMinutes() === 0) {
+    const today = getJSTDateString();
+    if (today !== lastRunDay) {
         checkEvents();
     }
-}, 60 * 1000);
+}, 30 * 1000);
 
 // ===== Slash Commands =====
 const commands = [
