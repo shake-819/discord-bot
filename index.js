@@ -102,9 +102,10 @@ function daysUntil(dateStr) {
 
 // ===== Core =====
 let lastRunDay = null;
+let isChecking = false;
 
 async function checkEvents() {
-    if (isChecking) return; // ← 多重実行防止
+    if (isChecking) return;
     isChecking = true;
 
     try {
@@ -144,7 +145,7 @@ async function checkEvents() {
     } catch (err) {
         console.error("❌ checkEvents error:", err);
     } finally {
-        isChecking = false; // ← 必ず解除
+        isChecking = false;
     }
 }
 
