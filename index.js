@@ -104,38 +104,48 @@ function daysUntil(dateStr) {
 let lastRunDay = null;
 
 async function checkEvents() {
-    const today = getJSTDateString();
-    if (today === lastRunDay) return;
-    lastRunDay = today;
+    if (isChecking) return; // ← 多重実行防止
+    isChecking = true;
 
-    console.log("⏰ JST 00:00 check:", today);
+    try {
+        const today = getJSTDateString();
+        if (today === lastRunDay) return;
+        lastRunDay = today;
 
-    let { events, sha } = await loadEvents();
-    const channel = await client.channels.fetch(CHANNEL_ID);
+        console.log("⏰ JST date change check:", today);
 
-    const nextEvents = [];
+        let { events, sha } = await loadEvents();
+        const channel = await client.channels.fetch(CHANNEL_ID);
 
-    for (const e of events) {
-        const d = daysUntil(e.date);
-        if (d < 0) continue;
+        const nextEvents = [];
 
-        if (d === 7 && !e.n7) {
-            await channel.send(`📅【7日前】${e.date} - ${e.message}`);
-            e.n7 = true;
+        for (const e of events) {
+            const d = daysUntil(e.date);
+            if (d < 0) continue;
+
+            if (d === 7 && !e.n7) {
+                await channel.send(`📅【7日前】${e.date} - ${e.message}`);
+                e.n7 = true;
+            }
+            if (d === 3 && !e.n3) {
+                await channel.send(`📅【3日前】${e.date} - ${e.message}`);
+                e.n3 = true;
+            }
+            if (d === 0 && !e.n0) {
+                await channel.send(`📅【今日】${e.date} - ${e.message}`);
+                e.n0 = true;
+            }
+
+            nextEvents.push(e);
         }
-        if (d === 3 && !e.n3) {
-            await channel.send(`📅【3日前】${e.date} - ${e.message}`);
-            e.n3 = true;
-        }
-        if (d === 0 && !e.n0) {
-            await channel.send(`📅【今日】${e.date} - ${e.message}`);
-            e.n0 = true;
-        }
 
-        nextEvents.push(e);
+        await saveEvents(nextEvents, sha);
+
+    } catch (err) {
+        console.error("❌ checkEvents error:", err);
+    } finally {
+        isChecking = false; // ← 必ず解除
     }
-
-    await saveEvents(nextEvents, sha);
 }
 
 // ===== JST 0:00 安定スケジューラ =====
