@@ -5,7 +5,7 @@
     "message": "ITパスポート試験 <@1141332537071906906>",
     "n7": true,
     "n3": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "3bb8f100dbff5e33",
@@ -19,7 +19,7 @@
     "id": "d1a98980142c3aa5",
     "date": "2026-02-14",
     "message": "ITパスポート試験 <@684342712023253020>",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n0": false
   },
