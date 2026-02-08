@@ -52,11 +52,11 @@ async function loadEvents() {
         { headers: ghHeaders }
     );
     if (res.status === 404) return { events: [], sha: null };
+
     const data = await res.json();
     const json = Buffer.from(data.content, "base64").toString();
     let events = JSON.parse(json);
 
-    // ✅ 既存 events.json を一度だけ浄化
     events = events
         .map(e => ({ ...e, date: normalizeDate(e.date) || e.date }))
         .filter(e => e.date);
@@ -79,7 +79,7 @@ async function saveEvents(events, sha) {
     );
 }
 
-// ===== JST utils（UTC基準・安全）=====
+// ===== JST utils =====
 function getJSTNow() {
     return new Date(Date.now() + 9 * 60 * 60 * 1000);
 }
@@ -105,6 +105,7 @@ let lastRunDay = null;
 let isChecking = false;
 
 async function checkEvents() {
+    if (!client.isReady()) return;
     if (isChecking) return;
     isChecking = true;
 
@@ -149,14 +150,6 @@ async function checkEvents() {
     }
 }
 
-// ===== JST 0:00 安定スケジューラ =====
-setInterval(() => {
-    const today = getJSTDateString();
-    if (today !== lastRunDay) {
-        checkEvents();
-    }
-}, 30 * 1000);
-
 // ===== Slash Commands =====
 const commands = [
     new SlashCommandBuilder()
@@ -177,10 +170,19 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 // ===== Ready =====
 client.once("ready", async () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
+
     await rest.put(
         Routes.applicationGuildCommands(client.user.id, GUILD_ID),
         { body: commands }
     );
+
+    // ✅ ここでスケジューラ開始（重要）
+    setInterval(() => {
+        const today = getJSTDateString();
+        if (today !== lastRunDay) {
+            checkEvents();
+        }
+    }, 30 * 1000);
 });
 
 // ===== Interactions =====
@@ -261,6 +263,3 @@ client.on("interactionCreate", async interaction => {
 // ===== Start =====
 client.login(TOKEN);
 http.createServer((_, res) => res.end("OK")).listen(process.env.PORT || 3000);
-
-
-
