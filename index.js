@@ -258,9 +258,15 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
-// ===== Start =====
-http.createServer((_, res) => res.end("OK"))
-    .listen(process.env.PORT || 3000);
+// ===== Web Server（最優先で起動）=====
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("OK");
+});
 
+server.listen(process.env.PORT || 3000, () => {
+    console.log("🌐 Web server listening");
+});
+
+// ===== Discord Login =====
 client.login(TOKEN);
-
