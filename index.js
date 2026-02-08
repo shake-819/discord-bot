@@ -182,12 +182,7 @@ client.once("ready", async () => {
             checkEvents();
         }
     }, 30 * 1000);
-
-    // ✅ ここで Web サーバー起動
-    http.createServer((_, res) => res.end("OK"))
-        .listen(process.env.PORT || 3000);
 });
-
 // ===== Interactions =====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
@@ -264,4 +259,8 @@ client.on("interactionCreate", async interaction => {
 });
 
 // ===== Start =====
+http.createServer((_, res) => res.end("OK"))
+    .listen(process.env.PORT || 3000);
+
 client.login(TOKEN);
+
