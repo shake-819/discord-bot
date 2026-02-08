@@ -176,13 +176,16 @@ client.once("ready", async () => {
         { body: commands }
     );
 
-    // ✅ ここでスケジューラ開始（重要）
     setInterval(() => {
         const today = getJSTDateString();
         if (today !== lastRunDay) {
             checkEvents();
         }
     }, 30 * 1000);
+
+    // ✅ ここで Web サーバー起動
+    http.createServer((_, res) => res.end("OK"))
+        .listen(process.env.PORT || 3000);
 });
 
 // ===== Interactions =====
@@ -262,4 +265,3 @@ client.on("interactionCreate", async interaction => {
 
 // ===== Start =====
 client.login(TOKEN);
-http.createServer((_, res) => res.end("OK")).listen(process.env.PORT || 3000);
