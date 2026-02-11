@@ -8,6 +8,7 @@ const {
     REST,
     Routes,
     SlashCommandBuilder,
+    Events,
 } = require("discord.js");
 
 const http = require("http");
@@ -23,6 +24,11 @@ const GUILD_ID = process.env.GUILD_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const EVENTS_PATH = "events.json";
+
+if (!TOKEN || !CHANNEL_ID || !GUILD_ID || !GITHUB_TOKEN || !GITHUB_REPO) {
+    console.error("❌ ENV missing");
+    process.exit(1);
+}
 
 // ===== Discord =====
 const client = new Client({
@@ -167,14 +173,19 @@ const commands = [
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-// ===== Ready =====
-client.once("ready", async () => {
+// ===== Ready（修正版）=====
+client.once(Events.ClientReady, async () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
 
-    await rest.put(
-        Routes.applicationGuildCommands(client.user.id, GUILD_ID),
-        { body: commands }
-    );
+    try {
+        await rest.put(
+            Routes.applicationGuildCommands(client.user.id, GUILD_ID),
+            { body: commands }
+        );
+        console.log("✅ Slash commands registered");
+    } catch (err) {
+        console.error("❌ Slash command register failed:", err);
+    }
 
     setInterval(() => {
         const today = getJSTDateString();
@@ -183,6 +194,7 @@ client.once("ready", async () => {
         }
     }, 30 * 1000);
 });
+
 // ===== Interactions =====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
@@ -196,14 +208,14 @@ client.on("interactionCreate", async interaction => {
     if (interaction.commandName === "runnow") {
         lastRunDay = null;
         await checkEvents();
-        return interaction.editReply?.("✅ 実行完了").catch(() => {});
+        return interaction.editReply("✅ 実行完了").catch(() => {});
     }
 
     if (interaction.commandName === "addevent") {
         const rawDate = interaction.options.getString("date");
         const date = normalizeDate(rawDate);
         if (!date) {
-            return interaction.editReply?.(
+            return interaction.editReply(
                 "❌ 日付形式が不正です（例: 2026-1-5 / 2026-01-05）"
             ).catch(() => {});
         }
@@ -218,47 +230,15 @@ client.on("interactionCreate", async interaction => {
         };
 
         events.push(newEvent);
-        events.sort((a, b) => {
-            const [ay, am, ad] = a.date.split("-").map(Number);
-            const [by, bm, bd] = b.date.split("-").map(Number);
-            return Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd);
-        });
-
         await saveEvents(events, sha);
 
-        return interaction.editReply?.(
+        return interaction.editReply(
             `✅ 追加しました\n📅 ${newEvent.date} - ${newEvent.message}`
-        ).catch(() => {});
-    }
-
-    if (interaction.commandName === "listevents") {
-        if (!events.length)
-            return interaction.editReply?.("イベントなし").catch(() => {});
-
-        events.sort((a, b) => {
-            const [ay, am, ad] = a.date.split("-").map(Number);
-            const [by, bm, bd] = b.date.split("-").map(Number);
-            return Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd);
-        });
-
-        return interaction.editReply?.(
-            events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
-        ).catch(() => {});
-    }
-
-    if (interaction.commandName === "deleteevent") {
-        const index = interaction.options.getInteger("index") - 1;
-        if (!events[index])
-            return interaction.editReply?.("無効な番号").catch(() => {});
-        const removed = events.splice(index, 1)[0];
-        await saveEvents(events, sha);
-        return interaction.editReply?.(
-            `🗑 削除：${removed.date} ${removed.message}`
         ).catch(() => {});
     }
 });
 
-// ===== Web Server（最優先で起動）=====
+// ===== Web Server =====
 const server = http.createServer((req, res) => {
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("OK");
