@@ -25,11 +25,6 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const EVENTS_PATH = "events.json";
 
-if (!TOKEN || !CHANNEL_ID || !GUILD_ID || !GITHUB_TOKEN || !GITHUB_REPO) {
-    console.error("❌ ENV missing");
-    process.exit(1);
-}
-
 // ===== Discord =====
 const client = new Client({
     intents: [GatewayIntentBits.Guilds],
@@ -51,23 +46,33 @@ function normalizeDate(dateStr) {
     return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-// ===== GitHub JSON =====
+// ===== GitHub JSON（タイムアウト追加）=====
 async function loadEvents() {
-    const res = await fetch(
-        `https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`,
-        { headers: ghHeaders }
-    );
-    if (res.status === 404) return { events: [], sha: null };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const data = await res.json();
-    const json = Buffer.from(data.content, "base64").toString();
-    let events = JSON.parse(json);
+    try {
+        const res = await fetch(
+            `https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`,
+            { headers: ghHeaders, signal: controller.signal }
+        );
 
-    events = events
-        .map(e => ({ ...e, date: normalizeDate(e.date) || e.date }))
-        .filter(e => e.date);
+        if (res.status === 404) return { events: [], sha: null };
+        if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
 
-    return { events, sha: data.sha };
+        const data = await res.json();
+        const json = Buffer.from(data.content, "base64").toString();
+        let events = JSON.parse(json);
+
+        events = events
+            .map(e => ({ ...e, date: normalizeDate(e.date) || e.date }))
+            .filter(e => e.date);
+
+        return { events, sha: data.sha };
+
+    } finally {
+        clearTimeout(timeout);
+    }
 }
 
 async function saveEvents(events, sha) {
@@ -173,7 +178,7 @@ const commands = [
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-// ===== Ready（修正版）=====
+// ===== Ready =====
 client.once(Events.ClientReady, async () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
 
@@ -195,7 +200,7 @@ client.once(Events.ClientReady, async () => {
     }, 30 * 1000);
 });
 
-// ===== Interactions =====
+// ===== Interactions（安全化）=====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
@@ -203,7 +208,14 @@ client.on("interactionCreate", async interaction => {
         await interaction.deferReply();
     } catch {}
 
-    let { events, sha } = await loadEvents();
+    let events, sha;
+
+    try {
+        ({ events, sha } = await loadEvents());
+    } catch (err) {
+        console.error("❌ loadEvents failed:", err);
+        return interaction.editReply("❌ GitHub読み込み失敗").catch(() => {});
+    }
 
     if (interaction.commandName === "runnow") {
         lastRunDay = null;
@@ -211,29 +223,12 @@ client.on("interactionCreate", async interaction => {
         return interaction.editReply("✅ 実行完了").catch(() => {});
     }
 
-    if (interaction.commandName === "addevent") {
-        const rawDate = interaction.options.getString("date");
-        const date = normalizeDate(rawDate);
-        if (!date) {
-            return interaction.editReply(
-                "❌ 日付形式が不正です（例: 2026-1-5 / 2026-01-05）"
-            ).catch(() => {});
-        }
-
-        const newEvent = {
-            id: crypto.randomBytes(8).toString("hex"),
-            date,
-            message: interaction.options.getString("message"),
-            n7: false,
-            n3: false,
-            n0: false,
-        };
-
-        events.push(newEvent);
-        await saveEvents(events, sha);
+    if (interaction.commandName === "listevents") {
+        if (!events.length)
+            return interaction.editReply("イベントなし").catch(() => {});
 
         return interaction.editReply(
-            `✅ 追加しました\n📅 ${newEvent.date} - ${newEvent.message}`
+            events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
         ).catch(() => {});
     }
 });
