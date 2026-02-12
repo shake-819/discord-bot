@@ -8,7 +8,6 @@ const {
     REST,
     Routes,
     SlashCommandBuilder,
-    Events,
 } = require("discord.js");
 
 const http = require("http");
@@ -46,33 +45,23 @@ function normalizeDate(dateStr) {
     return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-// ===== GitHub JSON（タイムアウト追加）=====
+// ===== GitHub JSON =====
 async function loadEvents() {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`,
+        { headers: ghHeaders }
+    );
+    if (res.status === 404) return { events: [], sha: null };
 
-    try {
-        const res = await fetch(
-            `https://api.github.com/repos/${GITHUB_REPO}/contents/${EVENTS_PATH}`,
-            { headers: ghHeaders, signal: controller.signal }
-        );
+    const data = await res.json();
+    const json = Buffer.from(data.content, "base64").toString();
+    let events = JSON.parse(json);
 
-        if (res.status === 404) return { events: [], sha: null };
-        if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+    events = events
+        .map(e => ({ ...e, date: normalizeDate(e.date) || e.date }))
+        .filter(e => e.date);
 
-        const data = await res.json();
-        const json = Buffer.from(data.content, "base64").toString();
-        let events = JSON.parse(json);
-
-        events = events
-            .map(e => ({ ...e, date: normalizeDate(e.date) || e.date }))
-            .filter(e => e.date);
-
-        return { events, sha: data.sha };
-
-    } finally {
-        clearTimeout(timeout);
-    }
+    return { events, sha: data.sha };
 }
 
 async function saveEvents(events, sha) {
@@ -179,18 +168,13 @@ const commands = [
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 // ===== Ready =====
-client.once(Events.ClientReady, async () => {
+client.once("ready", async () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
 
-    try {
-        await rest.put(
-            Routes.applicationGuildCommands(client.user.id, GUILD_ID),
-            { body: commands }
-        );
-        console.log("✅ Slash commands registered");
-    } catch (err) {
-        console.error("❌ Slash command register failed:", err);
-    }
+    await rest.put(
+        Routes.applicationGuildCommands(client.user.id, GUILD_ID),
+        { body: commands }
+    );
 
     setInterval(() => {
         const today = getJSTDateString();
@@ -200,7 +184,7 @@ client.once(Events.ClientReady, async () => {
     }, 30 * 1000);
 });
 
-// ===== Interactions（安全化）=====
+// ===== Interactions =====
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
@@ -208,27 +192,58 @@ client.on("interactionCreate", async interaction => {
         await interaction.deferReply();
     } catch {}
 
-    let events, sha;
-
-    try {
-        ({ events, sha } = await loadEvents());
-    } catch (err) {
-        console.error("❌ loadEvents failed:", err);
-        return interaction.editReply("❌ GitHub読み込み失敗").catch(() => {});
-    }
+    let { events, sha } = await loadEvents();
 
     if (interaction.commandName === "runnow") {
         lastRunDay = null;
         await checkEvents();
-        return interaction.editReply("✅ 実行完了").catch(() => {});
+        return interaction.editReply?.("✅ 実行完了").catch(() => {});
+    }
+
+    if (interaction.commandName === "addevent") {
+        const rawDate = interaction.options.getString("date");
+        const date = normalizeDate(rawDate);
+        if (!date) {
+            return interaction.editReply?.(
+                "❌ 日付形式が不正です（例: 2026-1-5 / 2026-01-05）"
+            ).catch(() => {});
+        }
+
+        const newEvent = {
+            id: crypto.randomBytes(8).toString("hex"),
+            date,
+            message: interaction.options.getString("message"),
+            n7: false,
+            n3: false,
+            n0: false,
+        };
+
+        events.push(newEvent);
+
+        await saveEvents(events, sha);
+
+        return interaction.editReply?.(
+            `✅ 追加しました\n📅 ${newEvent.date} - ${newEvent.message}`
+        ).catch(() => {});
     }
 
     if (interaction.commandName === "listevents") {
         if (!events.length)
-            return interaction.editReply("イベントなし").catch(() => {});
+            return interaction.editReply?.("イベントなし").catch(() => {});
 
-        return interaction.editReply(
+        return interaction.editReply?.(
             events.map((e, i) => `${i + 1}. ${e.date} - ${e.message}`).join("\n")
+        ).catch(() => {});
+    }
+
+    if (interaction.commandName === "deleteevent") {
+        const index = interaction.options.getInteger("index") - 1;
+        if (!events[index])
+            return interaction.editReply?.("無効な番号").catch(() => {});
+        const removed = events.splice(index, 1)[0];
+        await saveEvents(events, sha);
+        return interaction.editReply?.(
+            `🗑 削除：${removed.date} ${removed.message}`
         ).catch(() => {});
     }
 });
