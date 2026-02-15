@@ -59,7 +59,8 @@ async function loadEvents() {
 
     events = events
         .map(e => ({ ...e, date: normalizeDate(e.date) || e.date }))
-        .filter(e => e.date);
+        .filter(e => e.date)
+        .sort((a, b) => new Date(a.date) - new Date(b.date)); // ← 昇順ソート追加
 
     return { events, sha: data.sha };
 }
@@ -219,6 +220,7 @@ client.on("interactionCreate", async interaction => {
         };
 
         events.push(newEvent);
+        events.sort((a, b) => new Date(a.date) - new Date(b.date)); // ← 追加直後も昇順
 
         await saveEvents(events, sha);
 
