@@ -1,13 +1,5 @@
 [
   {
-    "id": "cbafc8b0df795b4a",
-    "date": "2026-02-16",
-    "message": "現代文ワーク提出",
-    "n7": false,
-    "n3": false,
-    "n0": true
-  },
-  {
     "id": "ee1d27aaa5619bd3",
     "date": "2026-02-21",
     "message": "セキュリティマネジメント <@1419617071385284733>",
@@ -19,7 +11,7 @@
     "id": "ee8a555b9c200e8f",
     "date": "2026-02-24",
     "message": "学年末考査(28{土}まで) @everyone",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n0": false
   },
