@@ -23,7 +23,10 @@ const GUILD_ID = process.env.GUILD_ID;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const EVENTS_PATH = "events.json";
-
+const BLOCKED_USER_IDS = [
+    "1345903867245891594", 
+];
+    
 // ===== Discord =====
 const client = new Client({
     intents: [GatewayIntentBits.Guilds],
@@ -189,9 +192,16 @@ client.once("ready", async () => {
 client.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
+    if (BLOCKED_USER_IDS.includes(interaction.user.id)) {
+        return interaction.reply({
+            content: "❌ 使用する権限がありません",
+        }).catch(() => {});
+    }
+
     try {
         await interaction.deferReply();
     } catch {}
+
 
     let { events, sha } = await loadEvents();
 
