@@ -5,7 +5,7 @@
     "message": "1,文学国語　2,数学　3,公共　4,頭髪検査",
     "n7": false,
     "n3": false,
-    "n0": false
+    "n0": true
   },
   {
     "id": "640efa7a63bb2ecd",
@@ -28,7 +28,7 @@
     "date": "2026-02-27",
     "message": "1,英コミュ　2,家庭総合　3,全員清掃20分間",
     "n7": true,
-    "n3": false,
+    "n3": true,
     "n0": false
   },
   {
@@ -51,7 +51,7 @@
     "id": "55707cd17c2bd4fe",
     "date": "2026-03-03",
     "message": "間に合わんかった鯖1周年(誰かブーストしろ‼️) @everyone",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n0": false
   },
