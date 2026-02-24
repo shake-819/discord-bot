@@ -1,19 +1,11 @@
 [
   {
-    "id": "0f42b8fae4eb04d9",
-    "date": "2026-02-24",
-    "message": "1,文学国語　2,数学　3,公共　4,頭髪検査",
-    "n7": false,
-    "n3": false,
-    "n0": true
-  },
-  {
     "id": "640efa7a63bb2ecd",
     "date": "2026-02-25",
     "message": "1,生物基礎　2,財務会計　3,保健",
     "n7": true,
     "n3": false,
-    "n0": false
+    "n0": true
   },
   {
     "id": "e207fc410e0e3253",
@@ -36,7 +28,7 @@
     "date": "2026-02-28",
     "message": "1,学科別　2&3,伝達贈呈式、卒業式予行",
     "n7": false,
-    "n3": false,
+    "n3": true,
     "n0": false
   },
   {
@@ -59,7 +51,7 @@
     "id": "8c04ed6b439a7939",
     "date": "2026-03-04",
     "message": "球技大会 @everyone",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n0": false
   },
