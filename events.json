@@ -1,19 +1,11 @@
 [
   {
-    "id": "640efa7a63bb2ecd",
-    "date": "2026-02-25",
-    "message": "1,生物基礎　2,財務会計　3,保健",
-    "n7": true,
-    "n3": false,
-    "n0": true
-  },
-  {
     "id": "e207fc410e0e3253",
     "date": "2026-02-26",
     "message": "1,論理国語　2,原価計算　3,プログラミングorソフト活用",
     "n7": true,
     "n3": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "eafb29b1ece3ef8c",
