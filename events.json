@@ -1,19 +1,11 @@
 [
   {
-    "id": "eafb29b1ece3ef8c",
-    "date": "2026-02-27",
-    "message": "1,英コミュ　2,家庭総合　3,全員清掃20分間",
-    "n7": true,
-    "n3": true,
-    "n0": true
-  },
-  {
     "id": "fcf728602e5e4d82",
     "date": "2026-02-28",
     "message": "1,学科別　2&3,伝達贈呈式、卒業式予行",
     "n7": false,
     "n3": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "45ae602d2054c320",
@@ -28,7 +20,7 @@
     "date": "2026-03-03",
     "message": "間に合わんかった鯖1周年(誰かブーストしろ‼️) @everyone",
     "n7": true,
-    "n3": false,
+    "n3": true,
     "n0": false
   },
   {
@@ -51,7 +43,7 @@
     "id": "18ca30b54ff5087c",
     "date": "2026-03-07",
     "message": "一般入学者選抜による休業日(3月18日まで) @everyone",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n0": false
   },
