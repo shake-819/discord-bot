@@ -1,19 +1,11 @@
 [
   {
-    "id": "8c04ed6b439a7939",
-    "date": "2026-03-04",
-    "message": "球技大会 @everyone",
-    "n7": true,
-    "n3": false,
-    "n0": true
-  },
-  {
     "id": "aa7ce2a230e10784",
     "date": "2026-03-05",
     "message": "テスト",
     "n7": false,
     "n3": false,
-    "n0": false
+    "n0": true
   },
   {
     "id": "a7e04cbaeab0ef70",
@@ -36,7 +28,7 @@
     "date": "2026-03-08",
     "message": "実用英語検定2次",
     "n7": false,
-    "n3": false,
+    "n3": true,
     "n0": false
   },
   {
