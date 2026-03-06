@@ -5,7 +5,7 @@
     "message": "一般入学者選抜による休業日(3月18日まで) @everyone",
     "n7": true,
     "n3": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "fb5deb1bb449ca76",
@@ -19,7 +19,7 @@
     "id": "9bb405a158ad69d4",
     "date": "2026-03-14",
     "message": "基本情報技術者 <@1419617071385284733>",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n0": false
   },
