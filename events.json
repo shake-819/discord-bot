@@ -1,19 +1,11 @@
 [
   {
-    "id": "18ca30b54ff5087c",
-    "date": "2026-03-07",
-    "message": "一般入学者選抜による休業日(3月18日まで) @everyone",
-    "n7": true,
-    "n3": true,
-    "n0": true
-  },
-  {
     "id": "fb5deb1bb449ca76",
     "date": "2026-03-08",
     "message": "実用英語検定2次",
     "n7": false,
     "n3": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "9bb405a158ad69d4",
