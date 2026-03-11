@@ -5,7 +5,7 @@
     "message": "Tiktokで外見至上主義読め <@1381142453062467588>",
     "n7": false,
     "n3": false,
-    "n0": false
+    "n0": true
   },
   {
     "id": "9bb405a158ad69d4",
@@ -27,7 +27,7 @@
     "id": "443d71503058f2a3",
     "date": "2026-03-19",
     "message": "終業式 @everyone",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n0": false
   },
@@ -35,7 +35,7 @@
     "id": "ea52d01edc91b1c6",
     "date": "2026-03-19",
     "message": "終業式",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n0": false
   },
