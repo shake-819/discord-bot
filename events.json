@@ -5,7 +5,7 @@
     "message": "憲法記念日",
     "n7": false,
     "n3": false,
-    "n1": false,
+    "n1": true,
     "n0": false
   },
   {
@@ -22,7 +22,7 @@
     "date": "2026-05-05",
     "message": "こどもの日",
     "n7": false,
-    "n3": false,
+    "n3": true,
     "n1": false,
     "n0": false
   },
