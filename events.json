@@ -1,21 +1,12 @@
 [
   {
-    "id": "d1985bae20cd9d74",
-    "date": "2026-05-03",
-    "message": "憲法記念日",
-    "n7": false,
-    "n3": false,
-    "n1": true,
-    "n0": true
-  },
-  {
     "id": "02da937bbb01f315",
     "date": "2026-05-04",
     "message": "みどりの日",
     "n7": false,
     "n3": true,
     "n1": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "139fed0afbe96329",
@@ -23,7 +14,7 @@
     "message": "こどもの日",
     "n7": false,
     "n3": true,
-    "n1": false,
+    "n1": true,
     "n0": false
   },
   {
@@ -40,7 +31,7 @@
     "date": "2026-05-07",
     "message": "月曜授業振替",
     "n7": true,
-    "n3": false,
+    "n3": true,
     "n1": false,
     "n0": false
   },
