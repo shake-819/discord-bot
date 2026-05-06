@@ -1,21 +1,12 @@
 [
   {
-    "id": "275a077f8a0a409a",
-    "date": "2026-05-06",
-    "message": "振替休日",
-    "n7": false,
-    "n3": true,
-    "n1": true,
-    "n0": true
-  },
-  {
     "id": "bfcc2286c236d90a",
     "date": "2026-05-07",
     "message": "月曜授業振替",
     "n7": true,
     "n3": true,
     "n1": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "0ca173cf33372caa",
