@@ -5,7 +5,7 @@
     "message": "1 数学　2 文学国語　3 ［情報処理］→ネットワーク管理　［国際経済］→観光ビジネス",
     "n7": false,
     "n3": true,
-    "n1": false,
+    "n1": true,
     "n0": false
   },
   {
@@ -22,7 +22,7 @@
     "date": "2026-05-20",
     "message": "1 論理国語　2グローバル経済",
     "n7": false,
-    "n3": false,
+    "n3": true,
     "n1": false,
     "n0": false
   },
