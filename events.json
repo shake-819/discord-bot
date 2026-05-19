@@ -1,21 +1,12 @@
 [
   {
-    "id": "3fa3ccc29fb4e3ae",
-    "date": "2026-05-19",
-    "message": "1 歴史総合　2 ［情報処理］→ネットワーク活用　［商業］→ビジコミュ　3 総合選択（政治経済、数学特講、論表II）",
-    "n7": false,
-    "n3": true,
-    "n1": true,
-    "n0": true
-  },
-  {
     "id": "d5b1a4bf9a32bd67",
     "date": "2026-05-20",
     "message": "1 論理国語　2グローバル経済",
     "n7": false,
     "n3": true,
     "n1": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "6674bc4662ea73ca",
@@ -23,7 +14,7 @@
     "message": "（木）1 英語コミュ　2科学と人間生活　3 学年集会",
     "n7": true,
     "n3": true,
-    "n1": false,
+    "n1": true,
     "n0": false
   },
   {
