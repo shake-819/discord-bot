@@ -1,20 +1,11 @@
 [
   {
-    "id": "511f986e3fafdae3",
-    "date": "2026-06-10",
-    "message": "避難訓練（5分短縮）",
-    "n7": true,
-    "n3": true,
-    "n1": true,
-    "n0": true
-  },
-  {
     "id": "cd41b3f7535e71b7",
     "date": "2026-06-12",
     "message": "源氏物語　記述課題締め切り",
     "n7": false,
     "n3": true,
-    "n1": false,
+    "n1": true,
     "n0": false
   },
   {
