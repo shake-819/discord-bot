@@ -1,30 +1,12 @@
 [
   {
-    "id": "c4bd3178dc2ff57a",
-    "date": "2026-07-05",
-    "message": "ビジネス文書 <@&1472958946007584872>",
-    "n7": true,
-    "n3": true,
-    "n1": false,
-    "n0": false
-  },
-  {
-    "id": "f11598672ebf1196",
-    "date": "2026-07-06",
-    "message": "午前中授業(7/16まで)",
-    "n7": true,
-    "n3": false,
-    "n1": false,
-    "n0": false
-  },
-  {
     "id": "0a818ad10224b18d",
     "date": "2026-07-08",
     "message": "就職者昼食持参",
     "n7": true,
     "n3": false,
     "n1": false,
-    "n0": false
+    "n0": true
   },
   {
     "id": "b33c6367ce408093",
