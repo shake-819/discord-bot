@@ -1,21 +1,12 @@
 [
   {
-    "id": "57ec98d479e97ec5",
-    "date": "2026-09-30",
-    "message": "エプロン・マスク・三角巾・爪切り",
-    "n7": false,
-    "n3": false,
-    "n1": false,
-    "n0": true
-  },
-  {
     "id": "2b5d3b497619e1d4",
     "date": "2026-10-01",
     "message": "エプロン・マスク・三角巾・爪切り",
     "n7": false,
     "n3": false,
     "n1": false,
-    "n0": false
+    "n0": true
   },
   {
     "id": "e5c126b3df88864f",
