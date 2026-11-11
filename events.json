@@ -1,15 +1,5 @@
 [
   {
-    "id": "471566158a5e6b80",
-    "date": "2026-11-11",
-    "weekday": "水",
-    "message": "授業参観（6限）5分短縮　学級懇談会",
-    "n7": false,
-    "n3": true,
-    "n1": true,
-    "n0": true
-  },
-  {
     "id": "3667d488397b460f",
     "date": "2026-11-12",
     "weekday": "木",
@@ -17,7 +7,7 @@
     "n7": false,
     "n3": true,
     "n1": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "fa1ae19dc094072e",
@@ -26,7 +16,7 @@
     "message": "厚生保健\t本日購買は休みです。",
     "n7": false,
     "n3": false,
-    "n1": false,
+    "n1": true,
     "n0": false
   },
   {
