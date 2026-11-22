@@ -1,15 +1,5 @@
 [
   {
-    "id": "d99b81899fa6d0d0",
-    "date": "2026-11-22",
-    "weekday": "日",
-    "message": "ビジネス文書 <@&1472958946007584872>",
-    "n7": true,
-    "n3": true,
-    "n1": true,
-    "n0": true
-  },
-  {
     "id": "42a34ccf921b2df4",
     "date": "2026-11-23",
     "weekday": "月",
@@ -17,7 +7,7 @@
     "n7": true,
     "n3": true,
     "n1": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "1a9d1c64823980c3",
@@ -25,7 +15,7 @@
     "weekday": "木",
     "message": "月曜事業振替",
     "n7": true,
-    "n3": false,
+    "n3": true,
     "n1": false,
     "n0": false
   },
@@ -54,7 +44,7 @@
     "date": "2026-11-30",
     "weekday": "月",
     "message": "1 歴史 2 商品 3 総選",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n1": false,
     "n0": false
