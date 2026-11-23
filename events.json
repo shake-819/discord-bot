@@ -1,15 +1,5 @@
 [
   {
-    "id": "42a34ccf921b2df4",
-    "date": "2026-11-23",
-    "weekday": "月",
-    "message": "勤労感謝の日",
-    "n7": true,
-    "n3": true,
-    "n1": true,
-    "n0": true
-  },
-  {
     "id": "1a9d1c64823980c3",
     "date": "2026-11-26",
     "weekday": "木",
@@ -54,7 +44,7 @@
     "date": "2026-12-01",
     "weekday": "火",
     "message": "1 科学 2 論国 3 ネ活(情科)",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n1": false,
     "n0": false
