@@ -6,7 +6,7 @@
     "message": "月曜事業振替",
     "n7": true,
     "n3": true,
-    "n1": false,
+    "n1": true,
     "n0": false
   },
   {
@@ -54,7 +54,7 @@
     "date": "2026-12-02",
     "weekday": "水",
     "message": "1 ネ管(情科)  ビジコミ(商科)  2 家庭総合",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n1": false,
     "n0": false
