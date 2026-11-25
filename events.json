@@ -7,7 +7,7 @@
     "n7": true,
     "n3": true,
     "n1": true,
-    "n0": false
+    "n0": true
   },
   {
     "id": "f5b8cdeeb710fb49",
@@ -15,7 +15,7 @@
     "weekday": "日",
     "message": "『こころ』form締切  期限: 11月29日 23:59",
     "n7": true,
-    "n3": false,
+    "n3": true,
     "n1": false,
     "n0": false
   },
@@ -25,7 +25,7 @@
     "weekday": "日",
     "message": "体育小テスト締め切り",
     "n7": true,
-    "n3": false,
+    "n3": true,
     "n1": false,
     "n0": false
   },
@@ -64,7 +64,7 @@
     "date": "2026-12-03",
     "weekday": "木",
     "message": "1 文国 2 英コミュ 3 グ経(情科)  選択科目(商科)",
-    "n7": false,
+    "n7": true,
     "n3": false,
     "n1": false,
     "n0": false
