@@ -6,7 +6,7 @@
     "message": "『こころ』form締切  期限: 11月29日 23:59",
     "n7": true,
     "n3": true,
-    "n1": false,
+    "n1": true,
     "n0": false
   },
   {
@@ -16,7 +16,7 @@
     "message": "体育小テスト締め切り",
     "n7": true,
     "n3": true,
-    "n1": false,
+    "n1": true,
     "n0": false
   },
   {
@@ -35,7 +35,7 @@
     "weekday": "火",
     "message": "1 科学 2 論国 3 ネ活(情科)",
     "n7": true,
-    "n3": false,
+    "n3": true,
     "n1": false,
     "n0": false
   },
